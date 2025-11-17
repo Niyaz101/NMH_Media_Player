@@ -82,3 +82,5 @@ resume.txt
 node_modules/
 # Python virtual environment
 venv/
+# Ignore libtorch binaries
+libtorch-cpu-win-x64.2.4.0.zip
