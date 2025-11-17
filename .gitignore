@@ -1,28 +1,16 @@
 ﻿# ===============================
-# Visual Studio 2026 Preview Git Ignore
+# Enhanced .gitignore for Visual Studio 2026, .NET, Unity, Python, C++
+# Secure + Aggressive + Clean
 # ===============================
 
-# Build results
+########################################
+#           BUILD ARTIFACTS
+########################################
 [Bb]in/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
 *.log
-
-# Visual Studio files
-.vs/
-*.user
-*.suo
-*.userosscache
-*.userprefs
-*.sln.docstates
-*.sln.cache
-*.suo
-
-# VS Code
-.vscode/
-
-# Build folders (MSBuild, .NET)
 Debug/
 Release/
 x64/
@@ -33,56 +21,199 @@ bld/
 [Bb]uild/
 out/
 publish/
+*.dll
+*.so
+*.dylib
+*.pdb
+*.exe
+*.msi
+*.app
+*.apk
+*.aab
 
-# NuGet
-*.nupkg
-*.snupkg
-packages/
+########################################
+#           VISUAL STUDIO
+########################################
+.vs/
+*.user
+*.suo
+*.userosscache
+*.userprefs
+*.sln.docstates
+*.sln.cache
+
+########################################
+#           VS CODE
+########################################
+.vscode/
+.history/
+
+########################################
+#         DOTNET / MSBUILD
+########################################
+project.lock.json
+project.fragment.lock.json
+artifacts/
 *.nuget.props
 *.nuget.targets
+*.snupkg
+*.nupkg
+packages/
 
-# User secrets and sensitive configs
+########################################
+#           UNITY ENGINE
+########################################
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+MemoryCaptures/
+*.pidb
+*.unitypackage
+*.csproj
+*.sln
+
+# Auto-created local package cache
+unitypackagecache/
+
+########################################
+#        PYTHON (for your analysis models)
+########################################
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+ENV/
+.ipynb_checkpoints/
+*.egg-info/
+dist/
+build/
+
+########################################
+#        C / C++ / COMPILERS
+########################################
+*.obj
+*.o
+*.lo
+*.la
+*.lib
+*.exp
+*.idb
+*.ipdb
+*.iobj
+*.pch
+*.pdb
+*.ilk
+*.map
+
+########################################
+#            MACHINE LEARNING MODELS
+########################################
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.tflite
+*.weights
+*.bin
+*.torchscript
+*.engine
+*.mlmodel
+nudenet*/
+nudenet-3.4.2/
+model/
+Models/
+Checkpoints/
+
+# Libtorch binaries + zips
+libtorch-*/ 
+*.zip
+*.tar.gz
+
+########################################
+#          SENSITIVE CONFIG/SECRETS
+########################################
 appsettings.Development.json
+appsettings.Local.json
 local.settings.json
+*.secret.json
+*.secrets.json
 secrets.json
 credentials.json
-db.config
-*.pfx
+private/
+security/
 *.key
+*.pfx
+*.pem
+*.cert
+*.crt
+*.token
+token.txt
+*.env
+.env
+.env.*
 
-# Logs and temp files
+########################################
+#             DATABASE FILES
+########################################
+*.db
+*.sqlite
+*.mdb
+*.mdf
+*.ldf
+
+########################################
+#             OS TRASH FILES
+########################################
+Thumbs.db
+Desktop.ini
+.DS_Store
 *.tmp
 *.bak
 *.old
 *.swp
 *.swo
 
-# IDEs and tools
-.idea/
-*.DotSettings.user
-_ReSharper*/
-*.ReSharper
+########################################
+#             NODE / WEB
+########################################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
 
-# OS files
-Thumbs.db
-Desktop.ini
-.DS_Store
+########################################
+#            MEDIA / HEAVY FILES
+########################################
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.mp3
+*.wav
+Frames/
+ExtractedFrames/
 
-# Databases and local data
-*.db
-*.sqlite
-*.mdf
-*.ldf
+########################################
+#        SPECIAL PROJECT ARTIFACTS
+########################################
 
-# Optional session file (your player resume)
+# Your resume/temporary files
 resume.txt
 
-# Other unnecessary files
-*.Publish.xml
-node_modules/
-# Python virtual environment
-venv/
-# Ignore libtorch binaries
-libtorch-cpu-win-x64.2.4.0.zip
+# Prevent accidental upload of large python models or FFmpeg
+ffmpeg/
+CFFmpeg/
+*.7z
+*.rar
 
-nudenet-3.4.2/
+# Prevent uploading everything inside AppData
+**/AppData/**
