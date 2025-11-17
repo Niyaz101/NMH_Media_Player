@@ -1,0 +1,66 @@
+﻿<UserControl x:Class="NMH_Media_Player.SettingsTabs.InterfaceTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="400" MinWidth="500"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"
+             Background="#1e1e1e">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="20" HorizontalAlignment="Stretch">
+
+            <!-- Theme / Colors -->
+            <GroupBox Header="Theme" Foreground="White" FontWeight="Bold" Background="#2d2d2d" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <Label Content="Select Theme:" Foreground="White"/>
+                    <ComboBox x:Name="cmbTheme" Width="200" SelectionChanged="cmbTheme_SelectionChanged">
+                        <ComboBoxItem Content="Dark" Tag="dark"/>
+                        <ComboBoxItem Content="Light" Tag="light"/>
+                    </ComboBox>
+
+                    <Label Content="Accent Color:" Foreground="White" Margin="0,5,0,0"/>
+                    <ComboBox x:Name="cmbAccentColor" Width="200">
+                        <ComboBoxItem Content="Blue" Tag="blue"/>
+                        <ComboBoxItem Content="Red" Tag="red"/>
+                        <ComboBoxItem Content="Green" Tag="green"/>
+                        <ComboBoxItem Content="Orange" Tag="orange"/>
+                    </ComboBox>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Window Behavior -->
+            <GroupBox Header="Window Behavior" Foreground="White" FontWeight="Bold" Background="#2d2d2d" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <CheckBox x:Name="chkStartMaximized" Content="Start Maximized" Foreground="White" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="chkRememberWindow" Content="Remember Window Size &amp; Position" Foreground="White" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="chkAlwaysOnTop" Content="Always on Top" Foreground="White"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Player Controls -->
+            <GroupBox Header="Player Controls" Foreground="White" FontWeight="Bold" Background="#2d2d2d" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <CheckBox x:Name="chkShowPlayPause" Content="Show Play/Pause Button" Foreground="White" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="chkShowStop" Content="Show Stop Button" Foreground="White" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="chkShowVolume" Content="Show Volume Slider" Foreground="White"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Fonts -->
+            <GroupBox Header="Fonts" Foreground="White" FontWeight="Bold" Background="#2d2d2d" Margin="0,0,0,10">
+                <StackPanel Margin="10">
+                    <Label Content="UI Font Size:" Foreground="White"/>
+                    <Slider x:Name="sliderUIFont" Minimum="8" Maximum="24" Value="14" Width="200"/>
+                    <Label Content="Subtitle Font Size:" Foreground="White" Margin="0,5,0,0"/>
+                    <Slider x:Name="sliderSubtitleFont" Minimum="10" Maximum="40" Value="20" Width="200"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Save Button -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <Button Content="Save Settings" Width="120" Click="SaveSettings_Click"/>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

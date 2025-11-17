@@ -1,0 +1,793 @@
+﻿<Window x:Class="NMH_Media_Player.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
+        Title="NMH Media Player" Height="550" Width="850"
+        MinWidth="400" MinHeight="300"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        MouseDown="TitleBar_MouseDown"
+        Closing="Window_Closing">
+    
+
+    <!-- ================= WindowChrome for borderless resize ================= -->
+    
+    
+    
+    
+    
+    <Window.Resources>
+
+        <DropShadowEffect x:Key="SubtitleShadowEffect"
+          Color="Black"
+          ShadowDepth="0"
+          Opacity="0.7"
+          BlurRadius="4"/>
+        <SolidColorBrush x:Key="PlaybackBackgroundBrush" Color="#1e1e1e"/>
+
+        <!-- Circular Button Style -->
+        <Style x:Key="CircularButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="35"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Background" Value="#2d2d2d"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderBrush" Value="#555"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="50">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+
+        <!-- Context Menu with Icons -->
+        <!-- Context Menu with Icons on Top-Level and Submenus -->
+        <ContextMenu x:Key="PlaybackContextMenu">
+
+            <!-- File Menu -->
+            <MenuItem Header="_File">
+                <MenuItem.Icon>
+                    <TextBlock Text="📁" FontSize="16"/>
+                </MenuItem.Icon>
+                <MenuItem Header="Quick Open File..." Click="QuickOpenFile_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⚡" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Open File/URL..." Click="OpenFileUrl_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📂" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Open DVD/BD..." Click="OpenDVD_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="💿" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Open Device..." Click="OpenDevice_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📱" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Open Directory..." Click="OpenDirectory_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📁" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Open Disc..." Click="OpenDisc_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🛞" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="Recent Videos" Click="RecentFiles_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🎞" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Recent Audio" x:Name="RecentFilesMenu" MouseEnter="RecentFilesMenu_MouseEnter">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🎵" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="Exit" Click="Exit_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="❌" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+
+            <!-- View Menu -->
+            <MenuItem Header="_View">
+                <MenuItem.Icon>
+                    <TextBlock Text="👁️" FontSize="16"/>
+                </MenuItem.Icon>
+                <MenuItem Header="_Hide Menu" Click="View_HideMenu_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🙈" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Seek Bar" Click="View_SeekBar_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📊" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Controls" Click="View_Controls_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🎛" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Information" Click="View_Information_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="ℹ️" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Statistics" Click="View_Statistics_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📈" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Full Screen" Click="View_FullScreen_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🖥️" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_On Top" Click="View_OnTop_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📌" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+
+            <!-- Playback Buttons -->
+            <MenuItem Header="_Playback">
+                <MenuItem.Icon>
+                    <TextBlock Text="▶" FontSize="16"/>
+                </MenuItem.Icon>
+                <MenuItem Header="Play" Click="BtnPlay_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="▶" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Pause" Click="BtnPause_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⏸" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Stop" Click="BtnStop_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⏹" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Backward -10s" Click="BtnBackward_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⏪" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Forward +10s" Click="BtnForward_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⏩" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Open File" Click="BtnOpen_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📂" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Previous" Click="BtnPrevious_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⏮" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Next" Click="BtnNext_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⏭" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Shuffle" Click="BtnShuffle_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔀" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+
+            <!-- Visualizer -->
+            <MenuItem Header="_Visualizer">
+                <MenuItem.Icon>
+                    <TextBlock Text="✨" FontSize="16"/>
+                </MenuItem.Icon>
+                <MenuItem Header="Niyaz Name" Click="Visualizer_SelectPreset_Click" Tag="0">
+                    <MenuItem.Icon>
+                        <TextBlock Text="✨" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Waves" Click="Visualizer_SelectPreset_Click" Tag="1">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🌊" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Circle Pulse" Click="Visualizer_SelectPreset_Click" Tag="2">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⭕" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Radial Bars" Click="Visualizer_SelectPreset_Click" Tag="3">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📊" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Particles" Click="Visualizer_SelectPreset_Click" Tag="4">
+                    <MenuItem.Icon>
+                        <TextBlock Text="💫" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+
+            <!-- Theme Color -->
+            <MenuItem Header="Theme Color">
+                <MenuItem.Icon>
+                    <TextBlock Text="🎨" FontSize="16"/>
+                </MenuItem.Icon>
+                <MenuItem Header="Color Panel" Click="Menu_ColorChange">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🎨" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+
+            <!-- Help -->
+            <MenuItem Header="_Help">
+                <MenuItem.Icon>
+                    <TextBlock Text="❓" FontSize="16"/>
+                </MenuItem.Icon>
+                <MenuItem Header="_About" Click="MenuAbout_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="❓" FontSize="16"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+        </ContextMenu>
+
+
+
+    </Window.Resources>
+
+
+
+
+    <DockPanel LastChildFill="True" Margin="0">
+
+
+        <!-- ====================== Custom Title Bar ====================== -->
+        <Border x:Name="TitleBarBorder" Background="#2d2d2d" Height="30" DockPanel.Dock="Top" MouseDown="TitleBar_MouseDown">
+            <Grid>
+                <!-- Centered Title -->
+                <TextBlock x:Name="txtTitle" Text="NMH Media Player"
+                   Foreground="White"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   FontWeight="Bold"/>
+
+                <!-- Window Control Buttons -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <!-- Minimize -->
+                    <Button Content="─" Width="35" Height="30" Click="BtnMinimize_Click"
+                    Background="Transparent" Foreground="White" BorderThickness="0"
+                    FontWeight="Bold" FontSize="14" ToolTip="Minimize"/>
+
+                    <!-- Maximize / Restore -->
+                    <Button Content="▢" Width="35" Height="30" Click="BtnMaximize_Click"
+                    Background="Transparent" Foreground="White" BorderThickness="0"
+                    FontWeight="Bold" FontSize="12" ToolTip="Maximize / Restore"/>
+
+                    <!-- Close -->
+                    <Button Content="X" Width="35" Height="30" Click="BtnClose_Click"
+                    Background="Transparent" Foreground="White" BorderThickness="0"
+                    FontWeight="Bold" FontSize="14" ToolTip="Close"
+                    MouseEnter="CloseButton_MouseEnter" MouseLeave="CloseButton_MouseLeave"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ====================== Menu Bar ================================ -->
+
+        <Menu x:Name="MainMenu" DockPanel.Dock="Top" Background="#2d2d2d" Foreground="White" BorderThickness="0">
+            <Menu.Resources>
+                <!-- ✅ Advanced Unified Style for All Menu Items -->
+                <Style TargetType="{x:Type MenuItem}">
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="#2d2d2d"/>
+                    <Setter Property="Padding" Value="6,2"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="FontFamily" Value="Segoe UI"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="OverridesDefaultStyle" Value="True"/>
+
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type MenuItem}">
+                                <Grid>
+                                    <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="3">
+                                        <DockPanel LastChildFill="True">
+                                            <!-- Menu Header -->
+                                            <ContentPresenter x:Name="HeaderHost"
+                                                      ContentSource="Header"
+                                                      Margin="6,2,6,2"
+                                                      RecognizesAccessKey="True"
+                                                      VerticalAlignment="Center"/>
+
+                                            <!-- Key Gesture / Shortcut -->
+                                            <TextBlock Text="{TemplateBinding InputGestureText}"
+                                               Foreground="LightGray"
+                                               Margin="6,0,6,0"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                    </Border>
+
+                                    <!-- Submenu Popup -->
+                                    <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsSubmenuOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                        <Border Background="#2d2d2d"
+                                        CornerRadius="4"
+                                        BorderBrush="#444"
+                                        BorderThickness="1"
+                                        MinWidth="180">
+                                            <StackPanel>
+                                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
+
+                                <!-- Hover and Open Triggers -->
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#444"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSubmenuOpen" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#555"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Menu.Resources>
+
+
+
+
+
+
+
+
+
+            <!-- 🌙 Menu Items -->
+            <!-- =========================== 1st Menu: This the File Menu ====================-->
+            <MenuItem Header="_File">
+                <MenuItem Header="Quick Open File..." InputGestureText="Ctrl+Q" Click="QuickOpenFile_Click"/>
+                <MenuItem Header="Open File/URL..." InputGestureText="Ctrl+O" Click="OpenFileUrl_Click"/>
+                <MenuItem Header="Open DVD/BD..." InputGestureText="Ctrl+D" Click="OpenDVD_Click"/>
+                <MenuItem Header="Open Device..." InputGestureText="Ctrl+V" Click="OpenDevice_Click"/>
+                <MenuItem Header="Open Directory..." Click="OpenDirectory_Click"/>
+                <MenuItem Header="Open Disc..." Click="OpenDisc_Click"/>
+                <Separator/>
+                <!-- Video Recent Files (click to open selection window) -->
+                <MenuItem Header="Recent Videos" Click="RecentFiles_Click"/>
+                <Separator/>
+                <!-- Audio Recent Files (hover to show dropdown) -->
+                <MenuItem Header="Recent Audio" x:Name="RecentFilesMenu" MouseEnter="RecentFilesMenu_MouseEnter"/>
+                <Separator/>
+                <MenuItem Header="Save a Copy..." InputGestureText="Alt+S" Click="SaveCopy_Click"/>
+                <MenuItem Header="Save Image..." InputGestureText="Alt+I" Click="SaveImage_Click"/>
+                <MenuItem Header="Save Thumbnails..." InputGestureText="Ctrl+T" Click="SaveThumbnails_Click"/>
+                <Separator/>
+                <MenuItem Header="Properties" InputGestureText="Shift+F10" Click="Properties_Click"/>
+                <MenuItem Header="Open File Location..." InputGestureText="Ctrl+L" Click="OpenFileLocation_Click"/>
+
+                <MenuItem Header="_Options" InputGestureText ="Ctrl+Shift+O" Click="File_Options_Click" />
+
+                <Separator/>
+                <MenuItem Header="Exit" InputGestureText="Alt+X" Click="Exit_Click"/>
+            </MenuItem>
+
+            <!-- ================== 2nd Menu: This is the View Menu ==================================-->
+            <MenuItem Header="_View">
+                <MenuItem Header="_Hide Menu" InputGestureText="Ctrl+0" Click="View_HideMenu_Click"/>
+                <MenuItem Header="_Seek Bar" InputGestureText="Ctrl+1" Click="View_SeekBar_Click"/>
+                <MenuItem Header="_Controls" InputGestureText="Ctrl+2" Click="View_Controls_Click"/>
+                <MenuItem Header="_Information" InputGestureText="Ctrl+3" Click="View_Information_Click"/>
+                <MenuItem Header="_Statistics" InputGestureText="Ctrl+4" Click="View_Statistics_Click"/>
+                <MenuItem Header="_Status" InputGestureText="Ctrl+5" Click="View_Status_Click"/>
+                <MenuItem Header="_Subtitle" InputGestureText="Ctrl+S">
+                    <!-- Load Subtitle -->
+                    <MenuItem Header="Load Subtitle" Click="View_LoadSubtitle_Click"/>
+
+                    <!-- Download Subtitle -->
+                    <MenuItem Header="Download Subtitle" Click="View_DownloadSubtitle_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Subresync" InputGestureText="Ctrl+6" Click="View_Subresync_Click"/>
+                <MenuItem Header="_Playlist" InputGestureText="Ctrl+7" Click="View_Playlist_Click"/>
+                <MenuItem Header="_Capture" InputGestureText="Ctrl+8" Click="View_Capture_Click"/>
+
+                <Separator/>
+                <MenuItem Header="_Full Screen" InputGestureText="F11" Click="View_FullScreen_Click"/>
+                <MenuItem Header="_On Top" Click="View_OnTop_Click"/>
+            </MenuItem>
+
+
+
+            <MenuItem Header="_Playback">
+                <MenuItem Header="_Play" Click="BtnPlay_Click"/>
+                <MenuItem Header="_Pause" Click="BtnPause_Click"/>
+                <MenuItem Header="_Stop" Click="BtnStop_Click"/>
+
+                <Separator/>
+                <MenuItem Header="_Video Scaling">
+                    <MenuItem Header="Original" Tag="Original" Click="Stretch_Original_Click"/>
+                    <MenuItem Header="Fit" Tag="Fit" Click="Stretch_Fit_Click"/>
+                    <MenuItem Header="Fill" Tag="Fill" Click="Stretch_Fill_Click"/>
+                    <MenuItem Header="Zoom" Tag="Zoom" Click="Stretch_Zoom_Click"/>
+                </MenuItem>
+
+                <MenuItem Header="_Aspect Ratio">
+                    <MenuItem Header="Original" Tag="Original" Click="Aspect_Original_Click"/>
+                    <MenuItem Header="16:12" Tag="16:12" Click="Aspect_16_12_Click"/>
+                    <MenuItem Header="4:3" Tag="4:3" Click="Aspect_4_3_Click"/>
+                    <MenuItem Header="9:6" Tag="9:6" Click="Aspect_9_6_Click"/>
+                    <MenuItem Header="16:9" Tag="16:9" Click="Aspect_16_9_Click"/>
+                </MenuItem>
+
+
+
+            </MenuItem>
+
+
+
+            <!-- 🎚 Selection Menu -->
+            <MenuItem Header="_Selection">
+                <MenuItem Header="_Audio Track" Click="MenuSelectAudioTrack_Click"/>
+
+                <MenuItem Header="_Subtitle Track" Click="MenuSelectSubtitleTrack_Click"/>
+                <MenuItem Header="_Video Quality" Click="MenuSelectVideoQuality_Click"/>
+            </MenuItem>
+
+
+
+
+
+
+            <MenuItem Header="_Visualizer">
+                <MenuItem Header="Niyaz Name" Click="Visualizer_SelectPreset_Click" Tag="0"/>
+
+                <MenuItem Header="Waves" Click="Visualizer_SelectPreset_Click" Tag="1"/>
+                <MenuItem Header="Circle Pulse" Click="Visualizer_SelectPreset_Click" Tag="2"/>
+                <MenuItem Header="Radial Bars" Click="Visualizer_SelectPreset_Click" Tag="3"/>
+                <MenuItem Header="Particles" Click="Visualizer_SelectPreset_Click" Tag="4"/>
+                <MenuItem Header="Mirror Spectrum" Click="Visualizer_SelectPreset_Click" Tag="5"/>
+                <MenuItem Header="Circular Wave" Click="Visualizer_SelectPreset_Click" Tag="6"/>
+                <MenuItem Header="Circles" Click="Visualizer_SelectPreset_Click" Tag="7"/>
+                <MenuItem Header="Neon Bars" Click="Visualizer_SelectPreset_Click" Tag="8"/>
+
+                <MenuItem Header="Spiral" Click="Visualizer_SelectPreset_Click" Tag="9"/>
+            </MenuItem>
+
+
+            <MenuItem Header=" Theme Color">
+                <MenuItem Header="Color Panel " Click="Menu_ColorChange" />
+
+            </MenuItem>
+
+
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About" Click="MenuAbout_Click"/>
+            </MenuItem>
+        </Menu>
+
+
+
+        <!-- ====================== Main Grid =============================== -->
+        <Grid x:Name="MainGrid" Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <!-- Video -->
+                <RowDefinition Height="Auto" />
+                <!-- Timeline Slider -->
+                <RowDefinition Height="Auto" />
+                <!-- Control Bar -->
+                <RowDefinition Height="Auto" />
+                <!-- Statistics Bar -->
+            </Grid.RowDefinitions>
+
+            <!-- 🎥 Video Container with Animated Background -->
+
+
+            <Border x:Name="PlaybackBorder"
+        Grid.Row="0"
+        CornerRadius="8"
+        Margin="5"
+        ClipToBounds="True"
+        Background="{DynamicResource PlaybackBackgroundBrush}"
+        ContextMenu="{StaticResource PlaybackContextMenu}"
+        MouseRightButtonDown="PlaybackBorder_MouseRightButtonDown">
+
+                <!-- Container to enforce aspect ratio -->
+                <Grid x:Name="VideoContainer">
+
+                    <!-- ======================================================================================-->
+
+
+                    <!-- Replace your Canvas with this Grid -->
+                    <Grid x:Name="PlayerBackgroundGrid" Background="Transparent" IsHitTestVisible="False">
+                        <!-- Animated Text -->
+                        <TextBlock x:Name="AnimatedText"
+               Text="NMH Media Player"
+               FontFamily="Segoe UI Semibold"
+               FontSize="64"
+               FontWeight="Bold"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               TextOptions.TextRenderingMode="ClearType"
+               TextOptions.TextFormattingMode="Ideal">
+
+        <!-- Animated Gradient -->
+                            <TextBlock.Foreground>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0" MappingMode="RelativeToBoundingBox" x:Name="GradientBrush">
+                                    <GradientStop Color="#FF00BCD4" Offset="0"/>
+                                    <GradientStop Color="#FFE91E63" Offset="0.5"/>
+                                    <GradientStop Color="#FF8BC34A" Offset="1"/>
+                                </LinearGradientBrush>
+                            </TextBlock.Foreground>
+
+        <!-- Glow / Shadow for 3D effect -->
+                            <TextBlock.Effect>
+                                <DropShadowEffect Color="Black"
+                              BlurRadius="8"
+                              ShadowDepth="4"
+                              Opacity="0.7"/>
+                            </TextBlock.Effect>
+
+        <!-- Optional: Slight rotation for "3D-ish" effect -->
+                            <TextBlock.RenderTransform>
+                                <TransformGroup>
+                                    <SkewTransform AngleX="-10" AngleY="0"/>
+                                    <RotateTransform Angle="-2"/>
+                                    <TranslateTransform X="0" Y="0"/>
+                                </TransformGroup>
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
+
+                        <!-- Animate Gradient -->
+                        <Grid.Triggers>
+                            <EventTrigger RoutedEvent="Grid.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="GradientBrush"
+                                     Storyboard.TargetProperty="GradientStops[0].Offset"
+                                     From="0" To="1" Duration="0:0:4" AutoReverse="True"/>
+                                        <DoubleAnimation Storyboard.TargetName="GradientBrush"
+                                     Storyboard.TargetProperty="GradientStops[1].Offset"
+                                     From="0.5" To="1.5" Duration="0:0:4" AutoReverse="True"/>
+                                        <DoubleAnimation Storyboard.TargetName="GradientBrush"
+                                     Storyboard.TargetProperty="GradientStops[2].Offset"
+                                     From="1" To="2" Duration="0:0:4" AutoReverse="True"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Grid.Triggers>
+                    </Grid>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    <!-- Visualizer Canvas on top -->
+                    <Canvas x:Name="VisualizerCanvas"
+                Visibility="Collapsed"
+                IsHitTestVisible="False"/>
+
+                    <!-- MediaElement wrapped inside a Grid to control scaling -->
+                    <Grid x:Name="MediaWrapper" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <MediaElement x:Name="mediaPlayer"
+                          LoadedBehavior="Manual"
+                          UnloadedBehavior="Stop"
+                          Stretch="Uniform"
+                          MediaOpened="mediaPlayer_MediaOpened"
+                          MediaEnded="mediaPlayer_MediaEnded"/>
+                    </Grid>
+
+
+
+                    <!-- Inside VideoContainer Grid, along with VisualizerCanvas and MediaWrapper -->
+                    <TextBlock x:Name="ThumbnailTimerText"
+           HorizontalAlignment="Right"
+           VerticalAlignment="Top"
+           FontSize="16"
+           Foreground="Yellow"
+           Background="#80000000"  
+           Padding="4"
+           Visibility="Collapsed"/> <!-- hide until used -->
+ 
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+
+                    <!-- Toasts / Subtitles on top -->
+                    <Grid x:Name="ToastContainer"
+              Grid.Row="0"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Margin="10"
+              IsHitTestVisible="False"/>
+
+                    <TextBlock x:Name="SubtitleTextBlock"
+                   Text=""
+                   FontSize="24"
+                   Foreground="White"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   HorizontalAlignment="Center"
+                   Margin="10"
+                   Effect="{StaticResource SubtitleShadowEffect}"/>
+                </Grid>
+            </Border>
+
+
+
+
+            <!-- 📊 Timeline / Progress Slider with Thumbnail Progress -->
+            <Grid Grid.Row="1" Margin="10,5,10,5">
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                    <!-- Video Playback Slider -->
+                    <Slider x:Name="progressSlider"
+                Minimum="0"
+                Maximum="1"
+                Value="0"
+                Height="20"
+                PreviewMouseDown="progressSlider_PreviewMouseDown"
+                PreviewMouseUp="progressSlider_PreviewMouseUp"
+                ValueChanged="progressSlider_ValueChanged"
+                Margin="0,0,0,5">
+
+                        <Slider.Template>
+                            <ControlTemplate TargetType="Slider">
+                                <Canvas x:Name="PART_Container" Height="20" MouseLeftButtonDown="SliderContainer_MouseLeftButtonDown">
+                                    <!-- Background track -->
+                                    <Rectangle x:Name="TrackBackground"
+                                   Height="6"
+                                   Fill="#555555"
+                                   RadiusX="3" RadiusY="3"
+                                   Canvas.Top="7"
+                                   Width="{TemplateBinding ActualWidth}"/>
+
+                                    <!-- Filled track -->
+                                    <Rectangle x:Name="TrackFill"
+                                   Height="6"
+                                   Fill="#00FF00"
+                                   RadiusX="3" RadiusY="3"
+                                   Canvas.Top="7"
+                                   Width="0"/>
+
+                                    <!-- Thumb -->
+                                    <Thumb x:Name="PART_Thumb"
+                               Width="12"
+                               Height="12"
+                               Background="White"
+                               BorderBrush="Gray"
+                               BorderThickness="1"
+                               DragDelta="Thumb_DragDelta"
+                               DragStarted="Thumb_DragStarted"
+                               DragCompleted="Thumb_DragCompleted"
+                               Canvas.Top="4"/>
+                                </Canvas>
+                            </ControlTemplate>
+                        </Slider.Template>
+                    </Slider>
+
+                    <!-- ✅ Thumbnail Extraction Progress Bar -->
+                    <ProgressBar x:Name="ThumbnailProgressBar"
+                     Grid.Row="2"
+                     Height="20"
+                     Margin="10"
+                     Minimum="0"
+                     Maximum="100"
+                     Value="0"
+                    Background="Red"
+                    Foreground="Lime"
+                     Visibility="Collapsed"/>
+
+
+                    
+
+                </StackPanel>
+            </Grid>
+
+
+
+
+
+
+            <!-- 🎛 Control Bar -->
+            <WrapPanel x:Name="ControlBarPanel" Grid.Row="2" HorizontalAlignment="Center" Margin="0,10,0,0">
+                <!-- Playback Buttons -->
+                <Button Content="▶" Click="BtnPlay_Click" ToolTip="Play" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="⏸" Click="BtnPause_Click" ToolTip="Pause" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="⏹" Click="BtnStop_Click" ToolTip="Stop" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="⏪" Click="BtnBackward_Click" ToolTip="-10s" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="⏩" Click="BtnForward_Click" ToolTip="+10s" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="⏮" Click="BtnPrevious_Click" ToolTip="Previous" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="⏭" Click="BtnNext_Click" ToolTip="Next" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="🔀" Click="BtnShuffle_Click" ToolTip="Shuffle" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+
+                <!-- Volume -->
+                <Label x:Name="volumeLabel"
+       Content="🔊"
+       Foreground="White"
+       VerticalAlignment="Center"
+       Margin="10,0,0,0"
+       Cursor="Hand"/>
+
+                <Slider x:Name="volumeSlider"
+        Width="100"
+        Minimum="0"
+        Maximum="1"
+        Value="0.5"
+        Margin="5,0,0,0"/>
+
+
+                <!-- Duration -->
+                <Label x:Name="lblDuration" Content="00:00:00 / 00:00:00" Foreground="White" VerticalAlignment="Center" Margin="20,0,0,0"/>
+            </WrapPanel>
+
+
+
+            <!-- 🎛 Statistics Bar (hidden by default) -->
+            <StackPanel x:Name="statisticsPanel" Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0" Visibility="Collapsed">
+                <TextBlock x:Name="txtResolution" Foreground="White" Margin="5,0"/>
+                <TextBlock x:Name="txtFPS" Foreground="White" Margin="5,0"/>
+                <TextBlock x:Name="txtBuffer" Foreground="White" Margin="5,0"/>
+                <TextBlock x:Name="txtBitrate" Foreground="White" Margin="5,0"/>
+                <TextBlock x:Name="txtJitter" Foreground="White" Margin="5,0"/>
+            </StackPanel>
+
+        </Grid>
+    </DockPanel>
+</Window>

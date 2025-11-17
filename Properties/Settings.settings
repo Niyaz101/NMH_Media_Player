@@ -1,0 +1,150 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)">
+  <Profiles>
+    <Profile Name="(Default)" />
+  </Profiles>
+
+	<Settings>
+		<Setting Name="StartWithWindows" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+		<Setting Name="ResumeLastSession" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="ShowSplash" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="VideoFolder" Type="System.String" Scope="User">
+			<Value Profile="(Default)"></Value>
+		</Setting>
+		<Setting Name="AudioFolder" Type="System.String" Scope="User">
+			<Value Profile="(Default)"></Value>
+		</Setting>
+		<Setting Name="Language" Type="System.String" Scope="User">
+			<Value Profile="(Default)">en</Value>
+		</Setting>
+		<Setting Name="ShowNotifications" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="NotificationDuration" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">5</Value>
+		</Setting>
+		<Setting Name="CheckUpdates" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="EnableLogging" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+
+
+
+		<!-- Interface Settings -->
+		<Setting Name="InterfaceTheme" Type="System.String" Scope="User">
+			<Value Profile="(Default)">dark</Value>
+		</Setting>
+		<Setting Name="AccentColor" Type="System.String" Scope="User">
+			<Value Profile="(Default)">blue</Value>
+		</Setting>
+		<Setting Name="StartMaximized" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+		<Setting Name="RememberWindow" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="AlwaysOnTop" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+		<Setting Name="ShowPlayPauseButton" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="ShowStopButton" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="ShowVolumeSlider" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="UIFontSize" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">14</Value>
+		</Setting>
+		<Setting Name="SubtitleFontSize" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">20</Value>
+		</Setting>
+
+		<!-- Playback Settings-->
+
+		<Setting Name="AutoPlayNext" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+
+		<Setting Name="ResumeLastPosition" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+
+		<Setting Name="PlaybackSpeed" Type="System.Double" Scope="User">
+			<Value Profile="(Default)">1.0</Value>
+		</Setting>
+
+		<Setting Name="AudioDelay" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">0</Value>
+		</Setting>
+
+		<Setting Name="BufferSize" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">10</Value>
+		</Setting>
+
+		<Setting Name="LoopSingle" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+
+		<Setting Name="LoopPlaylist" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+
+		
+		
+		<!-- Subtitle Settings-->
+
+		<Setting Name="EnableSubtitles" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="ShowSubtitlesOnStartup" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="SubtitleFontSize" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">20</Value>
+		</Setting>
+		<Setting Name="SubtitleFontColor" Type="System.String" Scope="User">
+			<Value Profile="(Default)">White</Value>
+		</Setting>
+		<Setting Name="SubtitleBackgroundOpacity" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">50</Value>
+		</Setting>
+		<Setting Name="SubtitlePosition" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">90</Value>
+		</Setting>
+
+		<!-- Advanced Settings -->
+		<Setting Name="BufferSize" Type="System.Int32" Scope="User">
+			<Value Profile="(Default)">10</Value>
+		</Setting>
+		<Setting Name="EnableHardwareAcceleration" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="EnableMultiThreadedDecoding" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">True</Value>
+		</Setting>
+		<Setting Name="EnableVerboseLogging" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+		<Setting Name="ShowDebugOverlay" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+		<Setting Name="EnableBetaFeatures" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+		<Setting Name="UseCustomRenderPipeline" Type="System.Boolean" Scope="User">
+			<Value Profile="(Default)">False</Value>
+		</Setting>
+
+	</Settings>
+</SettingsFile>

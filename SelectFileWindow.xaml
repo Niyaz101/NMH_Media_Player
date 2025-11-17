@@ -1,0 +1,12 @@
+﻿<Window x:Class="NMH_Media_Player.Modules.Handlers.SelectFileWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Select File" Height="300" Width="400">
+    <DockPanel>
+        <ListBox x:Name="listBoxFiles" DockPanel.Dock="Top" Margin="5"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Bottom" Margin="5">
+            <Button Content="OK" Width="75" Margin="5" Click="BtnOk_Click"/>
+            <Button Content="Cancel" Width="75" Margin="5" Click="BtnCancel_Click"/>
+        </StackPanel>
+    </DockPanel>
+</Window>

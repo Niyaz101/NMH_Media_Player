@@ -1,0 +1,125 @@
+﻿<Window x:Class="NMH_Media_Player.Thumbnails.ThumbnailSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Thumbnail Settings"
+        Height="300" Width="450"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#1E1E2D"
+        FontFamily="Segoe UI"
+        FontSize="14"
+        WindowStyle="None"
+        AllowsTransparency="True">
+
+    <Border BorderBrush="#444455" BorderThickness="1" CornerRadius="10" Padding="0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+                <!-- Header -->
+                <RowDefinition Height="*"/>
+                <!-- Content -->
+            </Grid.RowDefinitions>
+
+            <DockPanel Grid.Row="0" Background="#2B2B3A" LastChildFill="True" Height="50">
+                <!-- Close Button docked Right with margin -->
+                <Button Width="30" Height="30" DockPanel.Dock="Right" Click="Cancel_Click" Cursor="Hand"
+            Background="Transparent" BorderThickness="0" ToolTip="Close" Margin="0,0,10,0">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Ellipse x:Name="CloseEllipse" Fill="#FF5555"/>
+                                <TextBlock Text="✕" Foreground="White" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="CloseEllipse" Property="Opacity" Value="0.8"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="CloseEllipse" Property="Opacity" Value="0.6"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Title TextBlock fills remaining space -->
+                <TextBlock Text="Thumbnail Settings" Foreground="#E0E0E0" FontWeight="Bold"
+               FontSize="16" VerticalAlignment="Center" Margin="15,0,0,0"/>
+            </DockPanel>
+
+
+
+            <!-- Main Content -->
+            <StackPanel Grid.Row="1" Margin="20">
+                <!-- Resolution -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                    <TextBlock Text="Resolution:" VerticalAlignment="Center" Width="120" Foreground="#E0E0E0"/>
+                    <ComboBox x:Name="ResolutionComboBox" Width="200" SelectedIndex="0" Padding="5"
+          Background="#2A2A3A" Foreground="#C0C0C0" BorderBrush="#444455" BorderThickness="1"
+          HorizontalContentAlignment="Left">
+                        <ComboBox.Resources>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Background" Value="#2A2A3A"/>
+                                <Setter Property="Foreground" Value="#C0C0C0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                <Setter Property="Padding" Value="5,2"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ComboBoxItem">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+                                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#3A3A4A"/>
+                                                    <Setter Property="Foreground" Value="#E0E0E0"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#555577"/>
+                                                    <Setter Property="Foreground" Value="#D0D0D0"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ComboBox.Resources>
+
+                        <ComboBoxItem Content="HD (1x)" Tag="1"/>
+                        <ComboBoxItem Content="4K (2x)" Tag="2"/>
+                        <ComboBoxItem Content="8K (4x)" Tag="4"/>
+                    </ComboBox>
+
+
+                </StackPanel>
+
+                <!-- Rows -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                    <TextBlock Text="Rows:" VerticalAlignment="Center" Width="120" Foreground="#E0E0E0"/>
+                    <Border Background="#2A2A3A" BorderBrush="#444455" BorderThickness="1" CornerRadius="5">
+                        <TextBox x:Name="RowsTextBox" Width="100" Background="Transparent" Foreground="#E0E0E0"
+                                 BorderThickness="0" TextAlignment="Center" Padding="5"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Columns -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
+                    <TextBlock Text="Columns:" VerticalAlignment="Center" Width="120" Foreground="#E0E0E0"/>
+                    <Border Background="#2A2A3A" BorderBrush="#444455" BorderThickness="1" CornerRadius="5">
+                        <TextBox x:Name="ColumnsTextBox" Width="100" Background="Transparent" Foreground="#E0E0E0"
+                                 BorderThickness="0" TextAlignment="Center" Padding="5"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Buttons -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancel" Width="100" Height="40" Click="Cancel_Click" Margin="5"
+                            Background="#444455" Foreground="#E0E0E0" BorderBrush="#555566" FontWeight="SemiBold" Cursor="Hand"/>
+                    <Button Content="Generate" Width="120" Height="40" Click="Generate_Click" Margin="5"
+                            Background="#007ACC" Foreground="White" BorderBrush="#006BB3" FontWeight="SemiBold" Cursor="Hand"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
