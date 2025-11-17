@@ -23,8 +23,8 @@ namespace NMH_Media_Player.Thumbnails
 
         private readonly TimeSpan videoDuration;
 
-        private const int MaxRows = 20;
-        private const int MaxColumns = 20;
+        private const int MaxRows = 12;
+        private const int MaxColumns = 8;
 
         public ThumbnailSettingsWindow(TimeSpan videoLength)
         {

@@ -310,8 +310,21 @@ namespace NMH_Media_Player.Modules
                 {
                     using (Bitmap first = new Bitmap(frames[0]))
                     {
-                        int thumbWidth = first.Width * scale;
-                        int thumbHeight = first.Height * scale;
+                        int maxThumbWidth = 3000;
+                        int maxThumbHeight = 3000;
+
+                        double ratio = Math.Min(
+                            (double)maxThumbWidth / first.Width,
+                            (double)maxThumbHeight / first.Height
+                        );
+
+                        int thumbWidth = (int)(first.Width * ratio);
+                        int thumbHeight = (int)(first.Height * ratio);
+
+
+
+
+
                         int border = 5 * scale;
 
                         int finalWidth = cols * thumbWidth + (cols + 1) * border;
@@ -432,6 +445,7 @@ namespace NMH_Media_Player.Modules
                         return duration;
 
                     MessageBox.Show("Failed to parse video duration.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
                     return 0;
                 }
             }
