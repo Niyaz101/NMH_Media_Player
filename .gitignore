@@ -84,3 +84,5 @@ node_modules/
 venv/
 # Ignore libtorch binaries
 libtorch-cpu-win-x64.2.4.0.zip
+
+nudenet-3.4.2/
