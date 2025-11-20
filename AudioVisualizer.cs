@@ -62,7 +62,32 @@ namespace NMH_Media_Player
             canvas.Visibility = Visibility.Visible;
             canvas.IsHitTestVisible = false;
 
-            RestartLayout();
+            // Use Dispatcher to wait for canvas measurement
+            canvas.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                // Force layout update to get ActualWidth/Height
+                canvas.UpdateLayout();
+
+                // Only proceed if we have valid size
+                if (canvas.ActualWidth > 0 && canvas.ActualHeight > 0)
+                {
+                    RestartLayout(); // initialize shapes/presets
+                }
+                else
+                {
+                    // fallback: delay a bit and try again
+                    DispatcherTimer retryTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+                    retryTimer.Tick += (s, e) =>
+                    {
+                        if (canvas.ActualWidth > 0 && canvas.ActualHeight > 0)
+                        {
+                            RestartLayout();
+                            retryTimer.Stop();
+                        }
+                    };
+                    retryTimer.Start();
+                }
+            }), DispatcherPriority.Loaded);
 
             audioAnimator = new AudioReactiveAnimator(canvas, shapes)
             {
@@ -72,6 +97,11 @@ namespace NMH_Media_Player
             running = true;
             timer.Start();
         }
+
+
+
+
+
 
         public void Stop()
         {
@@ -164,67 +194,77 @@ namespace NMH_Media_Player
                 case 2: CreateCircles(80); break;
                 case 3: CreateRadialBars(280); break;
                 case 4: CreateParticles(600); break;
-                case 5: CreateBars(40, 2.0, mirror: true); break;
+                case 5: CreateBars(40, BarType.Spectrum, 2.0, mirror: true); break;  // Spectrum bars
                 case 6: CreateCircularWave(50); break;
                 case 7: CreateRandomizedCircles(62); break; // preset 7
-                case 8: CreateBars(82); break;
+                case 8: CreateBars(82, BarType.Neon); break; // Neon bars
                 case 9: CreateSpiral(100); break;
-                default: CreateBars(50); break;
+                default: CreateCenterName(); break;
             }
+
         }
 
         #endregion
 
         #region Shape Factories
 
-        private void CreateBars(int count, double spacingFactor = 2.0, bool mirror = false)
-{
-    double w = Math.Max(100, canvas.ActualWidth);
-    double h = Math.Max(60, canvas.ActualHeight);
-    double barWidth = Math.Max(4, w / (count * spacingFactor));
-
-    for (int i = 0; i < count; i++)
-    {
-        // Generate a random color for this bar
-        Color barColor = Color.FromRgb(
-            (byte)rnd.Next(50, 256),
-            (byte)rnd.Next(50, 256),
-            (byte)rnd.Next(50, 256)
-        );
-
-        var rect = new Rectangle
+        public enum BarType
         {
-            Width = barWidth,
-            Height = 4,
-            RadiusX = 2,
-            RadiusY = 2,
-            Fill = new SolidColorBrush(barColor),
-            Opacity = 0.9
-        };
+            Spectrum,
+            Neon
+        }
 
-        double left = (w - (count * (barWidth + 2))) / 2 + i * (barWidth + 2);
-        Canvas.SetLeft(rect, left);
-        Canvas.SetTop(rect, h - rect.Height - 6);
-        canvas.Children.Add(rect);
-        shapes.Add(rect);
-
-        if (!mirror) continue;
-
-        var rect2 = new Rectangle
+        private void CreateBars(int count, BarType barType, double spacingFactor = 2.0, bool mirror = false)
         {
-            Width = barWidth,
-            Height = 4,
-            RadiusX = 2,
-            RadiusY = 2,
-            Fill = new SolidColorBrush(barColor),
-            Opacity = 0.8
-        };
-        Canvas.SetLeft(rect2, left);
-        Canvas.SetTop(rect2, 6);
-        canvas.Children.Add(rect2);
-        shapes.Add(rect2);
-    }
-}
+            double w = Math.Max(100, canvas.ActualWidth);
+            double h = Math.Max(60, canvas.ActualHeight);
+            double barWidth = Math.Max(4, w / (count * spacingFactor));
+
+            for (int i = 0; i < count; i++)
+            {
+                // Random color for each bar
+                Color barColor = Color.FromRgb(
+                    (byte)rnd.Next(50, 256),
+                    (byte)rnd.Next(50, 256),
+                    (byte)rnd.Next(50, 256)
+                );
+
+                var rect = new Rectangle
+                {
+                    Width = barWidth,
+                    Height = 4,
+                    RadiusX = 2,
+                    RadiusY = 2,
+                    Fill = new SolidColorBrush(barColor),
+                    Opacity = (barType == BarType.Neon) ? 0.9 : 0.8,
+                    Tag = new Tuple<Color, BarType>(barColor, barType) // store original color + type
+                };
+
+                double left = (w - (count * (barWidth + 2))) / 2 + i * (barWidth + 2);
+                Canvas.SetLeft(rect, left);
+                Canvas.SetTop(rect, h - rect.Height - 6);
+                canvas.Children.Add(rect);
+                shapes.Add(rect);
+
+                if (!mirror) continue;
+
+                var rect2 = new Rectangle
+                {
+                    Width = barWidth,
+                    Height = 4,
+                    RadiusX = 2,
+                    RadiusY = 2,
+                    Fill = new SolidColorBrush(barColor),
+                    Opacity = (barType == BarType.Neon) ? 0.8 : 0.7,
+                    Tag = new Tuple<Color, BarType>(barColor, barType)
+                };
+                Canvas.SetLeft(rect2, left);
+                Canvas.SetTop(rect2, 6);
+                canvas.Children.Add(rect2);
+                shapes.Add(rect2);
+            }
+        }
+
 
 
         private void CreateWaveLines(int lines)
@@ -425,6 +465,7 @@ namespace NMH_Media_Player
             movingTextBlocks.Clear();
             canvas.Children.Clear();
 
+            // Ensure canvas has valid size
             double canvasCenterX = canvas.ActualWidth / 2;
             double canvasCenterY = canvas.ActualHeight / 2;
 
@@ -432,10 +473,11 @@ namespace NMH_Media_Player
             {
                 for (int c = 0; c < maxCopiesPerWord; c++)
                 {
+                    int fontSize = rnd.Next(24, 48);
                     var tb = new TextBlock
                     {
                         Text = word,
-                        FontSize = rnd.Next(24, 48),
+                        FontSize = fontSize,
                         FontWeight = (rnd.NextDouble() > 0.5) ? FontWeights.Bold : FontWeights.Normal,
                         Foreground = new SolidColorBrush(Color.FromRgb(
                             (byte)rnd.Next(50, 256),
@@ -443,21 +485,33 @@ namespace NMH_Media_Player
                             (byte)rnd.Next(50, 256)))
                     };
 
-                    Canvas.SetLeft(tb, canvasCenterX - tb.ActualWidth / 2);
-                    Canvas.SetTop(tb, canvasCenterY - tb.ActualHeight / 2);
+                    // Measure before positioning
+                    tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    Size textSize = tb.DesiredSize;
+
+                    // Start exactly at canvas center
+                    Canvas.SetLeft(tb, canvasCenterX - textSize.Width / 2);
+                    Canvas.SetTop(tb, canvasCenterY - textSize.Height / 2);
 
                     canvas.Children.Add(tb);
 
-                    var angle = rnd.NextDouble() * 2 * Math.PI;
-                    double speed = rnd.NextDouble() * 3 + 1;
+                    // Random outward velocity
+                    double angle = rnd.NextDouble() * 2 * Math.PI;
+                    double speed = rnd.NextDouble() * 2 + 1;
+
                     movingTextBlocks.Add(new MovingTextBlock
                     {
                         TextBlock = tb,
-                        Velocity = new Vector(Math.Cos(angle) * speed, Math.Sin(angle) * speed)
+                        Velocity = new Vector(Math.Cos(angle) * speed, Math.Sin(angle) * speed),
+                        RotationAngle = 0,
+                        BaseFontSize = fontSize
                     });
                 }
             }
         }
+
+
+
 
         private void CreateSpiral(int segments)
         {
@@ -489,52 +543,91 @@ namespace NMH_Media_Player
                 case 2: AnimateCircles(amp); break;
                 case 3: AnimateRadialBars(amp); break;
                 case 4: AnimateParticles(amp); break;
-                case 5: AnimateBars(amp); break;
+                case 5: AnimateSpectrumBars(amp); break;
                 case 6: AnimateCircularWave(amp); break;
                 case 7: AnimateRandomizedCircles(amp); break;
-                case 8: AnimateBars(amp); break;
+                case 8: AnimateNeonBars(amp); break;
                 case 9: AnimateSpiral(amp); break;
             }
         }
 
-        private void AnimateBars(float amp)
+        private void AnimateSpectrumBars(float amp)
         {
+            int i = 0;
             double canvasWidth = canvas.ActualWidth;
             double canvasHeight = canvas.ActualHeight;
             int barCount = shapes.OfType<Rectangle>().Count();
 
-            if (barCount == 0) return;
-
             double spacing = canvasWidth / barCount;
 
-            int i = 0;
             foreach (var s in shapes.OfType<Rectangle>())
             {
-                // Base height scaled by amplitude and some random variation
                 double targetHeight = 20 + 200 * amp * (0.5 + rnd.NextDouble());
-
-                // Smooth interpolation for height
-                s.Height = s.Height + (targetHeight - s.Height) * 0.2;
-
-                // Y position so bar grows from bottom
+                s.Height += (targetHeight - s.Height) * 0.2;
                 Canvas.SetTop(s, canvasHeight - s.Height);
-
-                // X position evenly spaced
                 Canvas.SetLeft(s, i * spacing + spacing / 4);
 
-                // Optional: pulsate opacity
+                // Dynamic opacity
                 s.Opacity = 0.3 + 0.7 * amp;
 
-                // Optional: dynamic color based on amplitude
-                Color baseColor = ((SolidColorBrush)s.Fill).Color;
-                byte r = (byte)Math.Min(255, baseColor.R + amp * 150);
-                byte g = (byte)Math.Min(255, baseColor.G + amp * 150);
-                byte b = (byte)Math.Min(255, baseColor.B + amp * 150);
-                s.Fill = new SolidColorBrush(Color.FromRgb(r, g, b));
+                // Dynamic color: keep rainbow spectrum
+                if (s.Tag is Tuple<Color, BarType> tuple && tuple.Item2 == BarType.Spectrum)
+                {
+                    Color baseColor = tuple.Item1;
+                    byte r = (byte)Math.Min(255, baseColor.R + amp * 150);
+                    byte g = (byte)Math.Min(255, baseColor.G + amp * 150);
+                    byte b = (byte)Math.Min(255, baseColor.B + amp * 150);
+                    s.Fill = new SolidColorBrush(Color.FromRgb(r, g, b));
+                }
 
                 i++;
             }
         }
+
+
+
+        private void AnimateNeonBars(float amp)
+        {
+            int i = 0;
+            double canvasWidth = canvas.ActualWidth;
+            double canvasHeight = canvas.ActualHeight;
+            int barCount = shapes.OfType<Rectangle>().Count();
+
+            double spacing = canvasWidth / barCount;
+
+            foreach (var s in shapes.OfType<Rectangle>())
+            {
+                double targetHeight = 20 + 180 * amp * (0.5 + rnd.NextDouble());
+                s.Height += (targetHeight - s.Height) * 0.2;
+                Canvas.SetTop(s, canvasHeight - s.Height);
+                Canvas.SetLeft(s, i * spacing + spacing / 4);
+
+                s.Opacity = 0.5 + 0.5 * amp;
+
+                if (s.Tag is Tuple<Color, BarType> tuple && tuple.Item2 == BarType.Neon)
+                {
+                    Color originalColor = tuple.Item1;
+                    double factor = 0.5 + amp; // brightness
+                    byte r = (byte)Math.Min(255, originalColor.R * factor);
+                    byte g = (byte)Math.Min(255, originalColor.G * factor);
+                    byte b = (byte)Math.Min(255, originalColor.B * factor);
+
+                    s.Fill = new SolidColorBrush(Color.FromRgb(r, g, b));
+
+                    // Neon glow
+                    s.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        Color = Color.FromRgb(r, g, b),
+                        BlurRadius = 12 + amp * 15,
+                        ShadowDepth = 0,
+                        Opacity = 0.7
+                    };
+                }
+
+                i++;
+            }
+        }
+
 
 
         private void AnimateWaveLines(float amp)
@@ -783,6 +876,7 @@ namespace NMH_Media_Player
 
         private void AnimateCenterName(float amp)
         {
+            amp = float.IsNaN(amp) || amp < 0 ? 0 : amp; // ensure valid amplitude
             double canvasWidth = canvas.ActualWidth;
             double canvasHeight = canvas.ActualHeight;
 
@@ -790,11 +884,11 @@ namespace NMH_Media_Player
             {
                 var tb = m.TextBlock;
 
-                // Calculate new position scaled by audio amplitude
+                // Move
                 double posX = Canvas.GetLeft(tb) + m.Velocity.X * amp * 2;
                 double posY = Canvas.GetTop(tb) + m.Velocity.Y * amp * 2;
 
-                // Bounce off left/right edges
+                // Bounce edges
                 if (posX < 0)
                 {
                     posX = 0;
@@ -806,7 +900,6 @@ namespace NMH_Media_Player
                     m.Velocity = new Vector(-m.Velocity.X, m.Velocity.Y);
                 }
 
-                // Bounce off top/bottom edges
                 if (posY < 0)
                 {
                     posY = 0;
@@ -818,18 +911,21 @@ namespace NMH_Media_Player
                     m.Velocity = new Vector(m.Velocity.X, -m.Velocity.Y);
                 }
 
-                // Apply updated position
                 Canvas.SetLeft(tb, posX);
                 Canvas.SetTop(tb, posY);
 
-                // Optional: add slight rotation for more dynamic effect
-                tb.RenderTransform = new RotateTransform(
-                    (rnd.NextDouble() - 0.5) * 10 * amp,
-                    tb.ActualWidth / 2,
-                    tb.ActualHeight / 2
-                );
+                // Smooth rotation
+                m.RotationAngle += (rnd.NextDouble() - 0.5) * 2 * amp;
+                tb.RenderTransform = new RotateTransform(m.RotationAngle, tb.ActualWidth / 2, tb.ActualHeight / 2);
+
+                // Safe font size
+                double newFontSize = m.BaseFontSize * (1 + amp * 0.5);
+                if (double.IsNaN(newFontSize) || newFontSize <= 0)
+                    newFontSize = m.BaseFontSize; // fallback to base
+                tb.FontSize = newFontSize;
             }
         }
+
 
 
         #endregion
@@ -846,11 +942,7 @@ namespace NMH_Media_Player
             public Color Color { get; set; }        // Circle color
         }
 
-        private class MovingTextBlock
-        {
-            public TextBlock TextBlock { get; set; } = null!;
-            public Vector Velocity { get; set; }
-        }
+        
 
         private class AudioReactiveAnimator
         {

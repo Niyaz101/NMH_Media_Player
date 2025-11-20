@@ -317,15 +317,18 @@ namespace NMH_Media_Player
         private void BtnPause_Click(object sender, RoutedEventArgs e)
         {
             mediaController.Pause();
-            visualizer.Stop();
+            visualizer.StopAudioCapture();
         }
+
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
             mediaController.Stop();
+            visualizer.StopAudioCapture();
             visualizer.Stop();
             mediaController.SaveLastSession();
         }
+
 
 
         private async void BtnNext_Click(object sender, RoutedEventArgs e)
@@ -418,23 +421,30 @@ namespace NMH_Media_Player
             visualizer.SetPreset(selectedVisualizerPreset);
         }
 
-        private void UpdateVisualizer()
+        public async void UpdateVisualizer()
         {
-            if (mediaController.IsAudioFile(mediaController.CurrentFile)
-)
+            // Check if the current file is audio
+            if (!mediaController.IsAudioFile(mediaController.CurrentFile))
             {
-                visualizer.SetPreset(selectedVisualizerPreset);
-                if (!visualizer.IsRunning)
-                    visualizer.Start();
+                visualizer.StopAudioCapture();
+                visualizer.Stop();
+                return;
+            }
 
-                visualizer.StopAudioCapture();
-                visualizer.StartAudioCapture();
-            }
-            else
-            {
-                visualizer.StopAudioCapture();
-            }
+            // Allow MediaElement to fully start audio output
+            await Task.Delay(150);
+
+            // Apply current preset
+            visualizer.SetPreset(selectedVisualizerPreset);
+
+            // Start visualizer rendering only once
+            if (!visualizer.IsRunning)
+                visualizer.Start();
+
+            // Restart audio capture only ONCE
+            visualizer.StartAudioCapture();
         }
+
 
         //-------------------------------------- Window Events --------------------------------------------------------
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -531,7 +541,10 @@ namespace NMH_Media_Player
             }
 
             string videoPath = mediaPlayer.Source.LocalPath;
-            double durationSeconds = Modules.ThumbnailHelper.GetVideoDuration(videoPath, @"C:\ffmpeg\bin\ffprobe.exe");
+            double durationSeconds = Modules.ThumbnailHelper.GetVideoDuration(
+                videoPath,
+                @"C:\ffmpeg\bin\ffprobe.exe"
+            );
             TimeSpan videoLength = TimeSpan.FromSeconds(durationSeconds);
 
             ThumbnailSettingsWindow settingsWindow = new ThumbnailSettingsWindow(videoLength)
@@ -556,7 +569,7 @@ namespace NMH_Media_Player
 
             try
             {
-                await ThumbnailHelper.SaveThumbnailsAsync(
+                bool success = await ThumbnailHelper.SaveThumbnailsAsync(
                     videoPath: videoPath,
                     progress: progress,
                     rows: rows,
@@ -564,20 +577,35 @@ namespace NMH_Media_Player
                     scale: scale
                 );
 
-                MessageBox.Show("✅ Thumbnails saved successfully!");
+                // ⚠️ Only show success message when TRUE
+                if (success)
+                {
+                    MessageBox.Show(
+                        "Thumbnails saved successfully!",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information
+                    );
+                }
+                // ❌ Do nothing on failure, ThumbnailHelper already showed error
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"❌ Error: {ex.Message}");
+                MessageBox.Show(
+                    $"Unexpected error: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
             }
             finally
             {
                 ThumbnailProgressBar.Visibility = Visibility.Collapsed;
+
                 if (sender is MenuItem mi)
                     mi.IsEnabled = true;
             }
         }
-
 
         //--------------------------------------- Check  for Properties of the current file --------------------------------
 

@@ -29,6 +29,19 @@ public static class MediaPlayerEvents
 
                 // ---------------- Start playback ----------------
                 mediaPlayer.Play();
+
+
+
+
+                // --- START VISUALIZER if audio ---
+                if (controller.IsAudioFile(controller.GetCurrentFile()))
+                {
+                    // Run on UI thread
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        window.UpdateVisualizer();
+                    });
+                }
             }
         }
     }
