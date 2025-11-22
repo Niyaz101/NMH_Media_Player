@@ -9,7 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using NMH_Media_Player.Properties; // For Settings
+using NMH_Media_Player.Properties; 
 
 namespace NMH_Media_Player.SettingsTabs
 {
@@ -29,17 +29,14 @@ namespace NMH_Media_Player.SettingsTabs
             sliderSubtitleBackground.Value = Settings.Default.SubtitleBackgroundOpacity;
             sliderSubtitlePosition.Value = Settings.Default.SubtitlePosition;
 
-            // Load font color selection
-            string color = Settings.Default.SubtitleFontColor;
-            foreach (ComboBoxItem item in cmbSubtitleColor.Items)
+            // Load font color
+            if (!string.IsNullOrEmpty(Settings.Default.SubtitleFontColor))
             {
-                if (item.Tag != null && item.Tag.ToString() == color)
-                {
-                    cmbSubtitleColor.SelectedItem = item;
-                    break;
-                }
+                var color = (Color)ColorConverter.ConvertFromString(Settings.Default.SubtitleFontColor);
+                cpSubtitleColor.SelectedColor = color;
             }
         }
+
 
         private void SaveSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -49,13 +46,23 @@ namespace NMH_Media_Player.SettingsTabs
             Settings.Default.SubtitleBackgroundOpacity = (int)sliderSubtitleBackground.Value;
             Settings.Default.SubtitlePosition = (int)sliderSubtitlePosition.Value;
 
-            if (cmbSubtitleColor.SelectedItem is ComboBoxItem selectedColor)
-                Settings.Default.SubtitleFontColor = selectedColor.Tag.ToString();
+            var selectedColor = cpSubtitleColor.SelectedColor ?? Colors.White;
 
+            // Save the selected color in settings
+            Settings.Default.SubtitleFontColor = selectedColor.ToString(); // optional, store as string
             Settings.Default.Save();
 
-            MessageBox.Show("Subtitle settings saved successfully!", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            
+
+            // Apply to window live
+            if (Application.Current.MainWindow is MainWindow mw)
+                mw.ApplySubtitleSettings();
+
+            MessageBox.Show("Subtitle settings saved successfully!", "Saved",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
         }
+
     }
 }
 

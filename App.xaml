@@ -4,7 +4,17 @@
              xmlns:local="clr-namespace:NMH_Media_Player"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <!-- ============= Updated NavButtonStyle ============= -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/DarkTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            
+            
+            
+            
+            
+            
+            <!-- ============= Updated NavButtonStyle ============= -->
         <Style x:Key="NavButtonStyle" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -46,6 +56,7 @@
             </Setter>
         </Style>
 
-
+        </ResourceDictionary>
     </Application.Resources>
+    
 </Application>

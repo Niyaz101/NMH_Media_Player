@@ -387,10 +387,10 @@
             <MenuItem Header="_File">
                 <MenuItem Header="Quick Open File..." InputGestureText="Ctrl+Q" Click="QuickOpenFile_Click"/>
                 <MenuItem Header="Open File/URL..." InputGestureText="Ctrl+O" Click="OpenFileUrl_Click"/>
-                <MenuItem Header="Open DVD/BD..." InputGestureText="Ctrl+D" Click="OpenDVD_Click"/>
+                <MenuItem Header="Open DVD/BD..." InputGestureText="Ctrl+C" Click="OpenDVD_Click"/>
                 <MenuItem Header="Open Device..." InputGestureText="Ctrl+V" Click="OpenDevice_Click"/>
-                <MenuItem Header="Open Directory..." Click="OpenDirectory_Click"/>
-                <MenuItem Header="Open Disc..." Click="OpenDisc_Click"/>
+                <MenuItem Header="Open Directory..." InputGestureText="Ctrl+D"  Click="OpenDirectory_Click"/>
+                <MenuItem Header="Open Disc..." InputGestureText="Ctrl+K " Click="OpenDisc_Click"/>
                 <Separator/>
                 <!-- Video Recent Files (click to open selection window) -->
                 <MenuItem Header="Recent Videos" Click="RecentFiles_Click"/>
@@ -635,38 +635,23 @@
            Background="#80000000"  
            Padding="4"
            Visibility="Collapsed"/> <!-- hide until used -->
- 
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                     <!-- Toasts / Subtitles on top -->
-                    <Grid x:Name="ToastContainer"
-              Grid.Row="0"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="10"
-              IsHitTestVisible="False"/>
-
-                    <TextBlock x:Name="SubtitleTextBlock"
-                   Text=""
-                   FontSize="24"
-                   Foreground="White"
-                   TextWrapping="Wrap"
-                   TextAlignment="Center"
-                   VerticalAlignment="Bottom"
-                   HorizontalAlignment="Center"
-                   Margin="10"
-                   Effect="{StaticResource SubtitleShadowEffect}"/>
+                    <Grid x:Name="ToastContainer" Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" IsHitTestVisible="False"/>
+                    <TextBlock x:Name="SubtitleTextBlock" Text="" FontSize="24" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="10" Effect="{StaticResource SubtitleShadowEffect}"/>
                 </Grid>
             </Border>
 
@@ -747,34 +732,44 @@
 
             <!-- 🎛 Control Bar -->
             <WrapPanel x:Name="ControlBarPanel" Grid.Row="2" HorizontalAlignment="Center" Margin="0,10,0,0">
+
                 <!-- Playback Buttons -->
-                <Button Content="▶" Click="BtnPlay_Click" ToolTip="Play" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
-                <Button Content="⏸" Click="BtnPause_Click" ToolTip="Pause" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
-                <Button Content="⏹" Click="BtnStop_Click" ToolTip="Stop" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
-                <Button Content="⏪" Click="BtnBackward_Click" ToolTip="-10s" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
-                <Button Content="⏩" Click="BtnForward_Click" ToolTip="+10s" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
-                <Button Content="⏮" Click="BtnPrevious_Click" ToolTip="Previous" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
-                <Button Content="⏭" Click="BtnNext_Click" ToolTip="Next" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
-                <Button Content="🔀" Click="BtnShuffle_Click" ToolTip="Shuffle" Style="{StaticResource CircularButtonStyle}" Margin="2"/>
+                <Button Content="▶" Click="BtnPlay_Click" ToolTip="Play"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
+                <Button Content="⏸" Click="BtnPause_Click" ToolTip="Pause"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
+                <Button Content="⏹" Click="BtnStop_Click" ToolTip="Stop"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
+                <Button Content="⏪" Click="BtnBackward_Click" ToolTip="-10s"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
+                <Button Content="⏩" Click="BtnForward_Click" ToolTip="+10s"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
+                <Button Content="⏮" Click="BtnPrevious_Click" ToolTip="Previous"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
+                <Button Content="⏭" Click="BtnNext_Click" ToolTip="Next"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
+                <Button Content="🔀" Click="BtnShuffle_Click" ToolTip="Shuffle"
+            Style="{StaticResource CircularButtonStyle}"
+            Background="{DynamicResource AccentBrush}" Foreground="White" Margin="2"/>
 
                 <!-- Volume -->
-                <Label x:Name="volumeLabel"
-       Content="🔊"
-       Foreground="White"
-       VerticalAlignment="Center"
-       Margin="10,0,0,0"
-       Cursor="Hand"/>
+                <Label x:Name="volumeLabel" Content="🔊"
+           Foreground="{DynamicResource AccentDarkBrush}"
+           VerticalAlignment="Center" Margin="10,0,0,0" Cursor="Hand"/>
 
-                <Slider x:Name="volumeSlider"
-        Width="100"
-        Minimum="0"
-        Maximum="1"
-        Value="0.5"
-        Margin="5,0,0,0"/>
-
+                <Slider x:Name="volumeSlider" Width="100" Minimum="0" Maximum="1" Value="0.5" Margin="5,0,0,0"/>
 
                 <!-- Duration -->
-                <Label x:Name="lblDuration" Content="00:00:00 / 00:00:00" Foreground="White" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                <Label x:Name="lblDuration" Content="00:00:00 / 00:00:00"
+           Foreground="{DynamicResource AccentDarkBrush}"
+           VerticalAlignment="Center" Margin="20,0,0,0"/>
             </WrapPanel>
 
 

@@ -1,6 +1,7 @@
 ﻿using NMH.VideoFilter;
 using NMH_Media_Player.Handlers;
 using NMH_Media_Player.Modules.Helpers;
+using NMH_Media_Player.Subtiltles;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -476,67 +477,105 @@ namespace NMH_Media_Player.Modules
 
 
 
-        // Load subtitles from a .srt file
+        //// Load subtitles from a .srt file
+        //public void LoadSubtitles(string filePath)
+        //{
+        //    if (!File.Exists(filePath))
+        //    {
+        //        MessageBox.Show($"Subtitle file not found:\n{filePath}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        //        return;
+        //    }
+
+        //    try
+        //    {
+        //        CurrentSubtitleFile = filePath;
+        //        SubtitleEntries.Clear();
+
+        //        string[] lines = File.ReadAllLines(filePath);
+        //        SubtitleEntry? entry = null;
+        //        var timeRegex = new Regex(@"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})");
+
+        //        foreach (var line in lines)
+        //        {
+        //            if (string.IsNullOrWhiteSpace(line))
+        //            {
+        //                if (entry != null)
+        //                {
+        //                    SubtitleEntries.Add(entry);
+        //                    entry = null;
+        //                }
+        //                continue;
+        //            }
+
+        //            if (int.TryParse(line.Trim(), out int _)) // subtitle index line
+        //                continue;
+
+        //            var match = timeRegex.Match(line);
+        //            if (match.Success)
+        //            {
+        //                entry = new SubtitleEntry
+        //                {
+        //                    StartTime = TimeSpan.ParseExact(match.Groups[1].Value, @"hh\:mm\:ss\,fff", null),
+        //                    EndTime = TimeSpan.ParseExact(match.Groups[2].Value, @"hh\:mm\:ss\,fff", null)
+        //                };
+        //            }
+        //            else if (entry != null)
+        //            {
+        //                if (!string.IsNullOrEmpty(entry.Text))
+        //                    entry.Text += "\n";
+        //                entry.Text += line.Trim();
+        //            }
+        //        }
+
+        //        if (entry != null)
+        //            SubtitleEntries.Add(entry);
+
+        //        // Instead of MessageBox.Show
+        //        ViewMenuHandler.ShowToast(mainWindow, $"Loaded {SubtitleEntries.Count} subtitle lines.");
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show($"Failed to load subtitles:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        //    }
+        //}
+
+
+
         public void LoadSubtitles(string filePath)
         {
-            if (!File.Exists(filePath))
-            {
-                MessageBox.Show($"Subtitle file not found:\n{filePath}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
             try
             {
-                CurrentSubtitleFile = filePath;
-                SubtitleEntries.Clear();
-
-                string[] lines = File.ReadAllLines(filePath);
-                SubtitleEntry? entry = null;
-                var timeRegex = new Regex(@"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})");
-
-                foreach (var line in lines)
-                {
-                    if (string.IsNullOrWhiteSpace(line))
-                    {
-                        if (entry != null)
-                        {
-                            SubtitleEntries.Add(entry);
-                            entry = null;
-                        }
-                        continue;
-                    }
-
-                    if (int.TryParse(line.Trim(), out int _)) // subtitle index line
-                        continue;
-
-                    var match = timeRegex.Match(line);
-                    if (match.Success)
-                    {
-                        entry = new SubtitleEntry
-                        {
-                            StartTime = TimeSpan.ParseExact(match.Groups[1].Value, @"hh\:mm\:ss\,fff", null),
-                            EndTime = TimeSpan.ParseExact(match.Groups[2].Value, @"hh\:mm\:ss\,fff", null)
-                        };
-                    }
-                    else if (entry != null)
-                    {
-                        if (!string.IsNullOrEmpty(entry.Text))
-                            entry.Text += "\n";
-                        entry.Text += line.Trim();
-                    }
-                }
-
-                if (entry != null)
-                    SubtitleEntries.Add(entry);
-
-                // Instead of MessageBox.Show
+                SubtitleManager manager = new SubtitleManager();
+                SubtitleEntries = manager.Load(filePath);
                 ViewMenuHandler.ShowToast(mainWindow, $"Loaded {SubtitleEntries.Count} subtitle lines.");
-
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to load subtitles:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Failed to load subtitles:\n{ex.Message}");
             }
+        }
+
+        public void ClearSubtitles()
+        {
+            SubtitleEntries.Clear();
+            CurrentSubtitleFile = null;
+            subtitleTextBlock.Text = string.Empty;
+        }
+
+
+        public void UpdateSubtitle(TimeSpan currentTime)
+        {
+            if (SubtitleEntries == null || SubtitleEntries.Count == 0)
+            {
+                subtitleTextBlock.Text = "";
+                return;
+            }
+
+            var entry = SubtitleEntries.FirstOrDefault(s =>
+                currentTime >= s.StartTime && currentTime <= s.EndTime);
+
+            subtitleTextBlock.Text = entry?.Text ?? "";
         }
 
 
@@ -544,10 +583,21 @@ namespace NMH_Media_Player.Modules
 
 
 
+        //private void SubtitleTimer_Tick(object sender, EventArgs e)
+        //{
+        //    if (SubtitleEntries == null || SubtitleEntries.Count == 0 || mediaPlayer.Source == null)
+        //    {
+        //        subtitleTextBlock.Text = "";
+        //        return;
+        //    }
 
+        //    TimeSpan currentTime = mediaPlayer.Position;
 
-    
+        //    var currentSubtitle = SubtitleEntries.FirstOrDefault(s =>
+        //        currentTime >= s.StartTime && currentTime <= s.EndTime);
 
+        //    subtitleTextBlock.Text = currentSubtitle?.Text ?? "";
+        //}
 
         private void SubtitleTimer_Tick(object sender, EventArgs e)
         {
@@ -564,7 +614,6 @@ namespace NMH_Media_Player.Modules
 
             subtitleTextBlock.Text = currentSubtitle?.Text ?? "";
         }
-
 
 
 
@@ -591,12 +640,7 @@ namespace NMH_Media_Player.Modules
 
 
 
-        public void ClearSubtitles()
-        {
-            SubtitleEntries.Clear();
-            CurrentSubtitleFile = null;
-            subtitleTextBlock.Text = string.Empty;
-        }
+        
 
 
 

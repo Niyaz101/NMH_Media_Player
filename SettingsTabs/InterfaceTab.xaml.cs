@@ -1,6 +1,7 @@
-﻿using System.Windows;
+﻿using NMH_Media_Player.Properties; // For Settings
+using System.Windows;
 using System.Windows.Controls;
-using NMH_Media_Player.Properties; // For Settings
+using System.Windows.Media;
 
 namespace NMH_Media_Player.SettingsTabs
 {
@@ -10,6 +11,7 @@ namespace NMH_Media_Player.SettingsTabs
         {
             InitializeComponent();
             LoadSettings();
+
         }
 
         private void LoadSettings()
@@ -79,7 +81,22 @@ namespace NMH_Media_Player.SettingsTabs
 
         private void cmbTheme_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // For now, selection does nothing; theme will be applied later
+            if (cmbTheme.SelectedItem is ComboBoxItem selected)
+            {
+                string theme = selected.Tag.ToString(); // "dark" or "light"
+
+                var dict = new ResourceDictionary();
+                dict.Source = new Uri($"Themes/{theme.Substring(0, 1).ToUpper() + theme.Substring(1)}Theme.xaml", UriKind.Relative);
+
+                Application.Current.Resources.MergedDictionaries.Clear();
+                Application.Current.Resources.MergedDictionaries.Add(dict);
+
+                // Optional: save to settings
+                Settings.Default.InterfaceTheme = theme;
+                Settings.Default.Save();
+            }
         }
+        
+
     }
 }

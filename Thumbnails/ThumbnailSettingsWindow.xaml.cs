@@ -44,8 +44,8 @@ namespace NMH_Media_Player.Thumbnails
             }
             else if (duration.TotalMinutes <= 10)
             {
-                RowsTextBox.Text = "5";
-                ColumnsTextBox.Text = "4";
+                RowsTextBox.Text = "4";
+                ColumnsTextBox.Text = "5";
             }
             else if (duration.TotalMinutes <= 30)
             {
@@ -69,13 +69,13 @@ namespace NMH_Media_Player.Thumbnails
             }
             else if (duration.TotalMinutes <= 180)
             {
-                RowsTextBox.Text = "15";
-                ColumnsTextBox.Text = "5";
+                RowsTextBox.Text = "11";
+                ColumnsTextBox.Text = "6";
             }
             else
             {
-                RowsTextBox.Text = "20";
-                ColumnsTextBox.Text = "5";
+                RowsTextBox.Text = "12";
+                ColumnsTextBox.Text = "7";
             }
         }
 

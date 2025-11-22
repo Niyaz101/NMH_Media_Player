@@ -288,7 +288,8 @@ namespace NMH_Media_Player.Handlers
             var openFileDialog = new OpenFileDialog
             {
                 Title = "Load Subtitle File",
-                Filter = "Subtitle Files (*.srt;*.sub;*.vtt)|*.srt;*.sub;*.vtt|All Files (*.*)|*.*"
+                Filter = "Subtitle Files (*.srt;*.vtt;*.ass;*.ssa;*.sub)|*.srt;*.vtt;*.ass;*.ssa;*.sub|All Files (*.*)|*.*"
+
             };
 
             if (openFileDialog.ShowDialog() == true)

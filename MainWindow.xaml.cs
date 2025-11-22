@@ -8,6 +8,7 @@ using NMH_Media_Player.Handlers;
 using NMH_Media_Player.Modules;
 using NMH_Media_Player.Modules.Handlers;
 using NMH_Media_Player.Modules.Helpers;
+using NMH_Media_Player.Properties;
 using NMH_Media_Player.SettingsWindow;
 using NMH_Media_Player.Thumbnails;
 using NMH_Media_Player.VideoScaling;
@@ -65,6 +66,43 @@ namespace NMH_Media_Player
 
 
 
+            // Resize handler for dynamic subtitle scaling
+            VideoContainer.SizeChanged += VideoContainer_SizeChanged;
+
+
+
+
+            // --- Restore Window Size & Position ---
+            if (Settings.Default.StartMaximized)
+            {
+                this.WindowState = WindowState.Maximized;
+            }
+            else if (Settings.Default.RememberWindow)
+            {
+                this.Width = Settings.Default.WindowWidth;
+                this.Height = Settings.Default.WindowHeight;
+                this.Left = Settings.Default.WindowLeft;
+                this.Top = Settings.Default.WindowTop;
+            }
+
+            ApplyInterfaceSettings();
+            ApplySubtitleSettings();  // APPLY SETTINGS AFTER InitializeComponent()
+
+
+
+            string savedAccent = Settings.Default.AccentColor ?? "blue";
+            ApplyAccentColor(savedAccent);
+
+
+
+
+
+
+
+
+
+
+
 
 
             //---------------------------------- NSFW Filter Initialization ----------------------------------
@@ -82,6 +120,8 @@ namespace NMH_Media_Player
                 Interval = TimeSpan.FromMilliseconds(500)
             };
             timer.Tick += Timer_Tick;
+
+           
 
             mediaController = new MediaController(mediaPlayer, SubtitleTextBlock, this, timer);
 
@@ -110,6 +150,9 @@ namespace NMH_Media_Player
             //------------------------------------------- save color ------------------------------------------
             // Apply saved theme AFTER window is fully loaded
             Loaded += MainWindow_Loaded;
+
+
+            #region This is the Key Binding For View Menu Shortcuts
 
             // Ctrl+0 shows/hides the menu, this is for View Menu
             var toggleMenuCommand = new RoutedCommand();
@@ -150,7 +193,7 @@ namespace NMH_Media_Player
 
 
 
-
+          
 
             // Ctrl+5 Shows the Status of current File
             var showToastCommand = new RoutedCommand();
@@ -191,11 +234,74 @@ namespace NMH_Media_Player
 
 
 
+            #endregion
+
+            #region This Area is for the File Menu Keyboard Shortcuts
+            // Define the Open File command
+            var openFileCommand = new RoutedCommand(); 
+            InputBindings.Add(new KeyBinding(openFileCommand, new KeyGesture(Key.Q, ModifierKeys.Control)));
+            CommandBindings.Add(new CommandBinding(openFileCommand, (s, e) => BtnOpen_Click(null, null)));
+
+            // Define the Open URL command
+            var openUrlCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(openUrlCommand, new KeyGesture(Key.O, ModifierKeys.Control)));
+            CommandBindings.Add(new CommandBinding(openUrlCommand, (s, e) => OpenFileUrl_Click(null, null)));
+
+
+            // Define the Open DVD/CD command
+            var openDvdCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(openDvdCommand, new KeyGesture(Key.C, ModifierKeys.Control )));
+            CommandBindings.Add(new CommandBinding(openDvdCommand, (s, e) => OpenDVD_Click(null, null)));
+
+            // Define open Device coomand
+            var openDeviceCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(openDeviceCommand, new KeyGesture(Key.I, ModifierKeys.Control)));
+            CommandBindings.Add(new CommandBinding(openDeviceCommand, (s, e) => OpenDevice_Click(null, null) ));
+            // Define the Open Folder command
+            var openDirectoryCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(openDirectoryCommand, new KeyGesture(Key.D, ModifierKeys.Control)));
+            CommandBindings.Add(new CommandBinding(openDirectoryCommand, (s, e) => OpenDirectory_Click(null, null)));
+
+            // Define the open Disc command
+            var openDiscCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(openDiscCommand, new KeyGesture(Key.K, ModifierKeys.Control)));
+            CommandBindings.Add(new CommandBinding(openDiscCommand, (s, e) => OpenDisc_Click(null, null)));
+
+            // Defiene the save copy command
+            var saveCopyCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(saveCopyCommand, new KeyGesture(Key.S, ModifierKeys.Alt)));
+            CommandBindings.Add(new CommandBinding(saveCopyCommand, (s, e) => SaveCopy_Click(null, null)));
+
+            // Define the Save Image command
+            var saveImageCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(saveImageCommand, new KeyGesture(Key.I, ModifierKeys.Alt)));
+            CommandBindings.Add(new CommandBinding(saveImageCommand, (s, e) => SaveImage_Click(null, null)));
+
+            // Define the Save Thumbnails command
+            var saveThumbnailsCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(saveThumbnailsCommand, new KeyGesture(Key.T, ModifierKeys.Control)));
+            CommandBindings.Add(new CommandBinding(saveThumbnailsCommand, (s, e) => SaveThumbnails_Click(null, null)));
             // Define the Options command
             var optionsCommand = new RoutedCommand();
             InputBindings.Add(new KeyBinding(optionsCommand, new KeyGesture(Key.O, ModifierKeys.Control | ModifierKeys.Shift)));
             CommandBindings.Add(new CommandBinding(optionsCommand, (s, e) => File_Options_Click(null, null)));
 
+
+            // Define the Properties command
+            var PropertiesCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(PropertiesCommand, new KeyGesture(Key.Enter, ModifierKeys.Alt)));
+            CommandBindings.Add(new CommandBinding(PropertiesCommand, (s, e) => Properties_Click(null, null)));
+
+            // Define the Open File Location command
+            var openFileLocationCommand = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(openFileLocationCommand, new KeyGesture(Key.L, ModifierKeys.Control )));
+            CommandBindings.Add(new CommandBinding(openFileLocationCommand, (s, e) => OpenFileLocation_Click(null, null)));
+
+            
+
+            // --------------------------------- End of Keyboard Shortcuts -----------------------------------------
+
+            #endregion
 
 
         }
@@ -227,13 +333,6 @@ namespace NMH_Media_Player
         }
 
 
-
-        
-
-
-
-
-
         //-------------------------------------- Timer Tick Event ------------------------------------------------------
         private void Timer_Tick(object? sender, EventArgs e)
         {
@@ -250,6 +349,9 @@ namespace NMH_Media_Player
                 lblDuration.Content = $"{current:hh\\:mm\\:ss} / {total:hh\\:mm\\:ss} (-{remaining:hh\\:mm\\:ss})";
 
                 mediaController.LastPosition = mediaPlayer.Position;
+
+                mediaController.UpdateSubtitle(mediaPlayer.Position);
+
 
                 // ---------------- Update Statistics Panel ----------------
                 if (statisticsPanel.Visibility == Visibility.Visible && mediaPlayer.Source != null)
@@ -450,6 +552,17 @@ namespace NMH_Media_Player
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             mediaController.SaveLastSession();
+
+            // Save window size/position
+            if (Settings.Default.RememberWindow)
+            {
+                Settings.Default.WindowWidth = this.Width;
+                Settings.Default.WindowHeight = this.Height;
+                Settings.Default.WindowLeft = this.Left;
+                Settings.Default.WindowTop = this.Top;
+                Settings.Default.Save();
+            }
+
         }
 
         private async void LoadLastSession()
@@ -773,6 +886,133 @@ namespace NMH_Media_Player
             {
                 MessageBox.Show($"Unable to open Settings window:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+
+
+        //public void ApplySubtitleSettings()
+        //{
+        //    // Size
+        //    SubtitleTextBlock.FontSize = Settings.Default.SubtitleFontSize;
+
+        //    // Color
+        //    var converter = new BrushConverter();
+        //    SubtitleTextBlock.Foreground = (Brush)converter.ConvertFromString(Settings.Default.SubtitleFontColor);
+
+        //    // Background opacity
+        //    double opacity = Settings.Default.SubtitleBackgroundOpacity / 100.0;
+        //    SubtitleTextBlock.Background = new SolidColorBrush(Color.FromArgb(
+        //        (byte)(opacity * 255), 0, 0, 0)); // Black background
+
+        //    // Position (0 = top, 100 = bottom)
+        //    double offset = (100 - Settings.Default.SubtitlePosition) * 4.5;
+        //    SubtitleTextBlock.Margin = new Thickness(10, 0, 10, offset);
+
+        //    // Enable/Disable
+        //    SubtitleTextBlock.Visibility = Settings.Default.EnableSubtitles
+        //        ? Visibility.Visible
+        //        : Visibility.Collapsed;
+        //}
+
+        public void ApplySubtitleSettings()
+        {
+            // Font size
+            SubtitleTextBlock.FontSize = Settings.Default.SubtitleFontSize;
+
+            // Color
+            var color = (Color)ColorConverter.ConvertFromString(Settings.Default.SubtitleFontColor);
+            SubtitleTextBlock.Foreground = new SolidColorBrush(color);
+
+            // Vertical position (as Margin)
+            double percentage = Settings.Default.SubtitlePosition;
+            SubtitleTextBlock.Margin = new Thickness(10, 0, 10, percentage);
+
+            // Background opacity
+            SubtitleTextBlock.Background = new SolidColorBrush(Color.FromArgb(
+                (byte)(Settings.Default.SubtitleBackgroundOpacity * 2.55), 0, 0, 0));
+        }
+
+
+        private void VideoContainer_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (mediaPlayer == null || SubtitleTextBlock == null)
+                return;
+
+            // Video natural size (after media opened)
+            double videoW = mediaPlayer.NaturalVideoWidth;
+            double videoH = mediaPlayer.NaturalVideoHeight;
+
+            if (videoW == 0 || videoH == 0)
+                return;
+
+            // Container size
+            double containerW = VideoContainer.ActualWidth;
+            double containerH = VideoContainer.ActualHeight;
+
+            // Calculate rendered video size (Uniform Stretch)
+            double scale = Math.Min(containerW / videoW, containerH / videoH);
+            double renderedW = videoW * scale;
+            double renderedH = videoH * scale;
+
+            // Letterbox vertical offset
+            double letterBox = (containerH - renderedH) / 2;
+
+            // Keep subtitles just above the video bottom (5% inside video area)
+            double offset = letterBox + (renderedH * 0.05);
+
+            SubtitleTextBlock.Margin = new Thickness(0, 0, 0, offset);
+
+            // Scale font
+            double baseHeight = 420;
+            double scaleFactor = renderedH / baseHeight;
+            SubtitleTextBlock.FontSize = Math.Max(12, 24 * scaleFactor);
+        }
+        //------------------------------------------------------ -------------------------------------------
+
+
+        private void ApplyInterfaceSettings()
+        {
+            // Start Maximized
+            if (Settings.Default.StartMaximized)
+                this.WindowState = WindowState.Maximized;
+
+            // Always on Top
+            this.Topmost = Settings.Default.AlwaysOnTop;
+
+            // Remember Window Size & Position
+            if (Settings.Default.RememberWindow)
+            {
+                if (Settings.Default.WindowWidth > 0)
+                    this.Width = Settings.Default.WindowWidth;
+
+                if (Settings.Default.WindowHeight > 0)
+                    this.Height = Settings.Default.WindowHeight;
+
+                if (Settings.Default.WindowLeft >= 0)
+                    this.Left = Settings.Default.WindowLeft;
+
+                if (Settings.Default.WindowTop >= 0)
+                    this.Top = Settings.Default.WindowTop;
+            }
+        }
+
+        private void ApplyAccentColor(string accent)
+        {
+            string colorHex = accent switch
+            {
+                "blue" => "#2196F3",
+                "red" => "#F44336",
+                "green" => "#4CAF50",
+                "orange" => "#FF9800",
+                _ => "#2196F3"
+            };
+
+            // Update the brush dynamically
+            Application.Current.Resources["AccentBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
+
+            // Optional: lighten/darken for other accent variants
+            Application.Current.Resources["AccentLightBrush"] = new SolidColorBrush(((SolidColorBrush)Application.Current.Resources["AccentBrush"]).Color) { Opacity = 0.5 };
+            Application.Current.Resources["AccentDarkBrush"] = new SolidColorBrush(((SolidColorBrush)Application.Current.Resources["AccentBrush"]).Color) { Opacity = 0.8 };
         }
 
     }
