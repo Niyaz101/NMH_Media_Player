@@ -45,6 +45,7 @@ namespace NMH_Media_Player
         //-------------------------------------- Fields & Timer --------------------------------------------------------
         private DispatcherTimer timer;
         private bool isDraggingSlider = false;
+        private bool isClickSeeking = false;
 
         public MediaController mediaController { get; private set; }
         private AudioVisualizer visualizer;
@@ -334,27 +335,69 @@ namespace NMH_Media_Player
 
 
         //-------------------------------------- Timer Tick Event ------------------------------------------------------
+        //private void Timer_Tick(object? sender, EventArgs e)
+        //{
+        //    if (!isDraggingSlider && mediaPlayer.NaturalDuration.HasTimeSpan)
+        //    {
+        //        progressSlider.Maximum = mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds;
+        //        progressSlider.Value = mediaPlayer.Position.TotalSeconds;
+
+        //        SliderHandler.UpdateSliderVisual(progressSlider);
+
+        //        TimeSpan current = mediaPlayer.Position;
+        //        TimeSpan total = mediaPlayer.NaturalDuration.TimeSpan;
+        //        TimeSpan remaining = total - current;
+        //        lblDuration.Content = $"{current:hh\\:mm\\:ss} / {total:hh\\:mm\\:ss} (-{remaining:hh\\:mm\\:ss})";
+
+        //        mediaController.LastPosition = mediaPlayer.Position;
+
+        //        mediaController.UpdateSubtitle(mediaPlayer.Position);
+
+
+        //        // ---------------- Update Statistics Panel ----------------
+        //        if (statisticsPanel.Visibility == Visibility.Visible && mediaPlayer.Source != null)
+        //        {
+        //            string path = Uri.UnescapeDataString(mediaPlayer.Source.LocalPath);
+        //            var stats = FFmpegStatisticHelper.GetVideoStatistics(path);
+
+        //            txtResolution.Text = $"Resolution: {stats.Resolution}";
+        //            txtFPS.Text = $"FPS: {stats.FPS}";
+        //            txtBitrate.Text = $"Bitrate: {stats.Bitrate}";
+        //            txtBuffer.Text = "Buffer: N/A";  // optional
+        //            txtJitter.Text = "Jitter: N/A";  // optional
+        //        }
+        //    }
+
+        //}
+
+
         private void Timer_Tick(object? sender, EventArgs e)
         {
-            if (!isDraggingSlider && mediaPlayer.NaturalDuration.HasTimeSpan)
+            if (mediaPlayer.Source == null || !mediaPlayer.NaturalDuration.HasTimeSpan)
             {
+                progressSlider.Value = 0;
+                lblDuration.Content = "00:00:00 / 00:00:00";
+                return;
+            }
+            if (!isDraggingSlider && !isClickSeeking)
+            {
+                         // ---------------- Slider ----------------
                 progressSlider.Maximum = mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds;
                 progressSlider.Value = mediaPlayer.Position.TotalSeconds;
 
                 SliderHandler.UpdateSliderVisual(progressSlider);
 
+                // ---------------- Time Labels ----------------
                 TimeSpan current = mediaPlayer.Position;
                 TimeSpan total = mediaPlayer.NaturalDuration.TimeSpan;
                 TimeSpan remaining = total - current;
                 lblDuration.Content = $"{current:hh\\:mm\\:ss} / {total:hh\\:mm\\:ss} (-{remaining:hh\\:mm\\:ss})";
 
-                mediaController.LastPosition = mediaPlayer.Position;
-
+                // ---------------- Subtitle ----------------
                 mediaController.UpdateSubtitle(mediaPlayer.Position);
 
-
-                // ---------------- Update Statistics Panel ----------------
-                if (statisticsPanel.Visibility == Visibility.Visible && mediaPlayer.Source != null)
+                // ---------------- Statistics ----------------
+                if (statisticsPanel.Visibility == Visibility.Visible)
                 {
                     string path = Uri.UnescapeDataString(mediaPlayer.Source.LocalPath);
                     var stats = FFmpegStatisticHelper.GetVideoStatistics(path);
@@ -366,18 +409,21 @@ namespace NMH_Media_Player
                     txtJitter.Text = "Jitter: N/A";  // optional
                 }
             }
-
         }
+
+
 
         //-------------------------------------- Progress Slider -------------------------------------------------------
         private void progressSlider_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             SliderHandler.OnSliderMouseDown(ref isDraggingSlider);
+            isClickSeeking = true;
         }
 
         private void progressSlider_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
             SliderHandler.OnSliderMouseUp(progressSlider, ref isDraggingSlider, mediaPlayer);
+            isClickSeeking = false;
         }
 
         private void progressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -410,11 +456,12 @@ namespace NMH_Media_Player
 
         //-------------------------------------- UI Buttons -------------------------------------------------------------
 
-        private async void BtnPlay_Click(object sender, RoutedEventArgs e)
+        private void BtnPlay_Click(object sender, RoutedEventArgs e)
         {
-            await mediaController.PlayCurrentWithFilterRealtimeAsync();
+            mediaController.PlayCurrent(); // fast playback
             UpdateVisualizer();
         }
+
 
         private void BtnPause_Click(object sender, RoutedEventArgs e)
         {
@@ -436,7 +483,7 @@ namespace NMH_Media_Player
         private async void BtnNext_Click(object sender, RoutedEventArgs e)
         {
             mediaController.Next(); // advances the index
-            await mediaController.PlayCurrentWithFilterRealtimeAsync(); // plays with filter
+            mediaController.PlayCurrent(); 
             UpdateVisualizer();
             mediaController.SaveLastSession();
         }
@@ -447,7 +494,7 @@ namespace NMH_Media_Player
         private async void BtnPrevious_Click(object sender, RoutedEventArgs e)
         {
             mediaController.Previous(); // moves to previous
-            await mediaController.PlayCurrentWithFilterRealtimeAsync(); // plays with filter
+            mediaController.PlayCurrent();
             UpdateVisualizer(); // for Audio Visualizer
             mediaController.SaveLastSession();
         }
@@ -570,7 +617,7 @@ namespace NMH_Media_Player
             mediaController.LoadLastSession();
             if (!string.IsNullOrEmpty(mediaController.LastFilePath))
             {
-                await mediaController.PlayCurrentWithFilterRealtimeAsync(); // use the filter extraction
+               mediaController.PlayCurrent();
                 UpdateVisualizer();
             }
         }
@@ -1013,6 +1060,38 @@ namespace NMH_Media_Player
             // Optional: lighten/darken for other accent variants
             Application.Current.Resources["AccentLightBrush"] = new SolidColorBrush(((SolidColorBrush)Application.Current.Resources["AccentBrush"]).Color) { Opacity = 0.5 };
             Application.Current.Resources["AccentDarkBrush"] = new SolidColorBrush(((SolidColorBrush)Application.Current.Resources["AccentBrush"]).Color) { Opacity = 0.8 };
+        }
+
+
+
+        public void ResetUIPlaybackState()
+        {
+            timer.Stop();
+
+            progressSlider.Value = 0;
+            progressSlider.Maximum = 1;
+
+            lblDuration.Content = "00:00:00 / 00:00:00";
+        }
+
+        public void RestartUITimer()
+        {
+            timer.Stop();
+            timer.Start();
+        }
+
+        public void StopVisualizer()
+        {
+            visualizer?.StopAudioCapture();
+            visualizer?.Stop();
+        }
+
+
+
+        // In MainWindow.xaml.cs
+        public void SetCustomTitle(string title)
+        {
+            txtTitle.Text = title; // txtTitle is your TextBlock in the custom title bar
         }
 
     }

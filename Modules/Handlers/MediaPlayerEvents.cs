@@ -1,5 +1,6 @@
 ﻿using NMH_Media_Player;
 using NMH_Media_Player.Modules.Handlers;
+using NMH_Media_Player.Playback;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -20,23 +21,23 @@ public static class MediaPlayerEvents
 
                 var controller = window.mediaController;
 
-                // ---------------- Resume position ----------------
+                // ---- Resume position if needed ----
                 if (controller.LastPosition > TimeSpan.Zero)
                 {
                     mediaPlayer.Position = controller.LastPosition;
-                    controller.LastPosition = TimeSpan.Zero; // reset after seeking
+                    controller.LastPosition = TimeSpan.Zero;
                 }
 
-                // ---------------- Start playback ----------------
-                mediaPlayer.Play();
+                // ---- Restart UI timer for new file ----
+                window.RestartUITimer();
 
+                // ---- Start playback only if PlayCurrent didn't already ----
+                if (mediaPlayer.Position == TimeSpan.Zero)
+                    mediaPlayer.Play();
 
-
-
-                // --- START VISUALIZER if audio ---
+                // ---- Visualizer ----
                 if (controller.IsAudioFile(controller.GetCurrentFile()))
                 {
-                    // Run on UI thread
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         window.UpdateVisualizer();
@@ -48,14 +49,48 @@ public static class MediaPlayerEvents
 
 
 
+
+    //public static void MediaEnded(object sender, RoutedEventArgs e)
+    //{
+    //    // Example: Reset progress or do something when media ends
+    //    if (Application.Current.MainWindow is MainWindow window)
+    //    {
+    //        window.progressSlider.Value = 0;
+    //        window.lblDuration.Content = "00:00:00 / 00:00:00";
+    //    }
+    //}
+
+
     public static void MediaEnded(object sender, RoutedEventArgs e)
     {
-        // Example: Reset progress or do something when media ends
-        if (Application.Current.MainWindow is MainWindow window)
+        if (!(Application.Current.MainWindow is MainWindow window)) return;
+
+        var controller = window.mediaController;
+        if (controller == null || controller.GetCurrentFile() == null) return;
+
+        // Reset progress UI
+        window.progressSlider.Value = 0;
+        window.lblDuration.Content = "00:00:00 / 00:00:00";
+
+        var settings = PlaybackSettingsManager.Instance;
+
+        if (settings.LoopSingle)
         {
-            window.progressSlider.Value = 0;
-            window.lblDuration.Content = "00:00:00 / 00:00:00";
+            // Loop the same video
+            controller.Player.Position = TimeSpan.Zero;
+            controller.Player.Play();
+        }
+        else if (settings.AutoPlayNext)
+        {
+            // Move to next video in playlist
+            controller.Next();
+        }
+        else
+        {
+            // Otherwise stop the player
+            controller.Player.Stop();
         }
     }
+
 }
 

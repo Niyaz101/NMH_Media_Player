@@ -1,6 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -20,20 +20,25 @@ namespace NMH_Media_Player.SubtitlesViews
             public string FileId { get; set; }
         }
 
-        private List<SubtitleItem> searchResults = new List<SubtitleItem>();
+        // Use ObservableCollection to keep ListBox in sync automatically
+        private readonly ObservableCollection<SubtitleItem> searchResults = new ObservableCollection<SubtitleItem>();
         public string SelectedSubtitlePath { get; private set; }
 
-        private readonly string ApiKey = "VRw4L76Ujn8C3EOFu0bbvICHF7u5wR7W"; // Your API key
+        private readonly string ApiKey = "VRw4L76Ujn8C3EOFu0bbvICHF7u5wR7W"; // Replace with your API key
         private readonly string UserAgent = "NMHMediaPlayer/1.0";
 
         public SubtitleSearchWindow()
         {
             InitializeComponent();
-            txtSearch.Text = "Enter movie or video name";
-            txtSearch.Foreground = Brushes.Gray;
 
+            lstResults.ItemsSource = searchResults; // Bind once
             BtnDownload.IsEnabled = false;
             lstResults.SelectionChanged += LstResults_SelectionChanged;
+
+            txtSearch.Text = "Enter movie or video name";
+            txtSearch.Foreground = Brushes.Gray;
+            txtSearch.GotFocus += TxtSearch_GotFocus;
+            txtSearch.LostFocus += TxtSearch_LostFocus;
         }
 
         private void LstResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -50,9 +55,8 @@ namespace NMH_Media_Player.SubtitlesViews
                 return;
             }
 
-            lstResults.ItemsSource = null;
-            searchResults.Clear();
             BtnDownload.IsEnabled = false;
+            searchResults.Clear();
 
             try
             {
@@ -92,8 +96,6 @@ namespace NMH_Media_Player.SubtitlesViews
 
                 if (searchResults.Count == 0)
                     MessageBox.Show("No subtitles found for your search.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                lstResults.ItemsSource = searchResults;
             }
             catch (Exception ex)
             {
@@ -123,10 +125,9 @@ namespace NMH_Media_Player.SubtitlesViews
             try
             {
                 using HttpClient client = new HttpClient();
-                client.DefaultRequestHeaders.Add("Api-Key", ApiKey);
-                client.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+                client.DefaultRequestHeaders.Add("VRw4L76Ujn8C3EOFu0bbvICHF7u5wR7W", ApiKey);
+                client.DefaultRequestHeaders.Add("NMHMediaPlayer/1.0", UserAgent);
 
-                // Prepare POST request to get download link
                 var requestContent = new StringContent($"{{\"file_id\":{selected.FileId}}}", System.Text.Encoding.UTF8, "application/json");
                 string downloadUrl = "https://api.opensubtitles.com/api/v1/download";
 
@@ -135,13 +136,10 @@ namespace NMH_Media_Player.SubtitlesViews
                 for (int i = 0; i < retries; i++)
                 {
                     response = await client.PostAsync(downloadUrl, requestContent);
-                    if (response.IsSuccessStatusCode)
-                        break;
+                    if (response.IsSuccessStatusCode) break;
 
-                    if ((int)response.StatusCode == 503)
-                        await Task.Delay(2000); // retry after 2 seconds
-                    else
-                        response.EnsureSuccessStatusCode();
+                    if ((int)response.StatusCode == 503) await Task.Delay(2000);
+                    else response.EnsureSuccessStatusCode();
                 }
 
                 if (response == null || !response.IsSuccessStatusCode)
@@ -160,17 +158,15 @@ namespace NMH_Media_Player.SubtitlesViews
                     return;
                 }
 
-                // Download actual subtitle file
                 byte[] data = await client.GetByteArrayAsync(fileUrl);
 
-                // Handle ZIP files
                 if (Path.GetExtension(fileUrl).Equals(".zip", StringComparison.OrdinalIgnoreCase))
                 {
                     string tempZip = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.zip");
                     await File.WriteAllBytesAsync(tempZip, data);
 
                     using ZipArchive archive = ZipFile.OpenRead(tempZip);
-                    var srtEntry = archive.Entries[0]; // first file inside ZIP
+                    var srtEntry = archive.Entries[0];
                     using Stream entryStream = srtEntry.Open();
                     using FileStream fs = new FileStream(savePath, FileMode.Create, FileAccess.Write);
                     await entryStream.CopyToAsync(fs);

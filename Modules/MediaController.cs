@@ -2,6 +2,7 @@
 using NMH_Media_Player.Handlers;
 using NMH_Media_Player.Modules.Helpers;
 using NMH_Media_Player.Subtiltles;
+using NMH_Media_Player.Playback;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -25,13 +26,19 @@ namespace NMH_Media_Player.Modules
         private readonly TextBlock subtitleTextBlock;
         private readonly MainWindow mainWindow;
 
-        private List<string> playlist = [];
+     
         private int currentIndex = -1;
         private bool isShuffle = false;
         private readonly Random random = new();
 
         public CancellationTokenSource _analysisCts;
 
+        private List<string> playlist = new List<string>();
+        public List<SubtitleEntry> SubtitleEntries { get; private set; } = new List<SubtitleEntry>();
+
+
+
+        private readonly PlaybackSettingsManager playbackSettings = PlaybackSettingsManager.Instance;
 
 
 
@@ -47,7 +54,7 @@ namespace NMH_Media_Player.Modules
                          "NMH_Media_Player", "resume.txt");
 
         // ========================= Subtitles =========================
-        public List<SubtitleEntry> SubtitleEntries { get; private set; } = [];
+      
         public string? CurrentSubtitleFile { get; private set; } = null;
 
         // ✅ Use the MainWindow's timer instead of creating a new one
@@ -58,8 +65,24 @@ namespace NMH_Media_Player.Modules
             mainWindow = window ?? throw new ArgumentNullException(nameof(window));
             timer = sharedTimer ?? throw new ArgumentNullException(nameof(sharedTimer));
 
+
+
+
             // Attach only the subtitle update tick to the shared timer
             timer.Tick += SubtitleTimer_Tick;
+
+
+
+            // Apply initial playback settings
+            ApplyPlaybackSettings();
+
+            // Subscribe to runtime changes
+            playbackSettings.SettingsChanged += PlaybackSettings_SettingsChanged;
+
+            
+
+
+
         }
 
         // ========================= Playlist Management =========================
@@ -67,6 +90,9 @@ namespace NMH_Media_Player.Modules
         {
             playlist = files ?? new List<string>();
             currentIndex = playlist.Count > 0 ? 0 : -1;
+
+            // Update title even if playback hasn't started yet
+            UpdateWindowTitle();
         }
 
         public void AddToPlaylist(string file)
@@ -170,6 +196,28 @@ namespace NMH_Media_Player.Modules
         }
 
         // ========================= Navigation =========================
+        //public void Next(bool shuffleOverride = false)
+        //{
+        //    try
+        //    {
+        //        if (playlist.Count == 0)
+        //        {
+        //            ViewMenuHandler.ShowToast(mainWindow, "No video in the playlist!");
+        //            return;
+        //        }
+
+        //        currentIndex = (shuffleOverride || isShuffle)
+        //            ? random.Next(playlist.Count)
+        //            : (currentIndex + 1) % playlist.Count;
+
+        //        PlayCurrent();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        ViewMenuHandler.ShowToast(mainWindow, $"Failed to go to next video: {ex.Message}");
+        //    }
+        //}
+
         public void Next(bool shuffleOverride = false)
         {
             try
@@ -184,13 +232,15 @@ namespace NMH_Media_Player.Modules
                     ? random.Next(playlist.Count)
                     : (currentIndex + 1) % playlist.Count;
 
-                PlayCurrent();
+                resumePrompted = false; // Reset flag for the new video
+                PlayCurrent(startPlayback: true);
             }
             catch (Exception ex)
             {
                 ViewMenuHandler.ShowToast(mainWindow, $"Failed to go to next video: {ex.Message}");
             }
         }
+
 
         public void Previous(bool shuffleOverride = false)
         {
@@ -203,12 +253,12 @@ namespace NMH_Media_Player.Modules
                 }
 
                 currentIndex = (shuffleOverride || isShuffle)
-                    ? random.Next(playlist.Count)
-                    : currentIndex - 1;
+                 ? random.Next(playlist.Count)
+                 : (currentIndex - 1 + playlist.Count) % playlist.Count;
 
-                if (currentIndex < 0) currentIndex = playlist.Count - 1;
 
-                PlayCurrent();
+                resumePrompted = false; // Reset flag for the new video
+                PlayCurrent(startPlayback: true);
             }
             catch (Exception ex)
             {
@@ -264,10 +314,20 @@ namespace NMH_Media_Player.Modules
         // ========================= Play Current =========================
 
 
-        public void PlayCurrent(bool resumeFromLastPosition = true, bool userAction = false)
+        public void PlayCurrent(bool resumeFromLastPosition = true, bool userAction = false, bool startPlayback = true)
         {
             try
             {
+
+                string file = GetCurrentFile();
+                if (string.IsNullOrEmpty(file)) return;
+
+                // Stop any previous analysis first
+                _analysisCts?.Cancel();
+                _analysisCts = new CancellationTokenSource();
+                var token = _analysisCts.Token;
+
+                // ------------------- Playback Prep -------------------
                 if (playlist == null || playlist.Count == 0)
                 {
                     if (userAction)
@@ -275,6 +335,11 @@ namespace NMH_Media_Player.Modules
                     return;
                 }
 
+                if (!File.Exists(file))
+                {
+                    ViewMenuHandler.ShowToast(mainWindow, $"File not found: {file}");
+                    return;
+                }
                 if (currentIndex < 0 || currentIndex >= playlist.Count)
                 {
                     if (userAction)
@@ -282,13 +347,10 @@ namespace NMH_Media_Player.Modules
                     return;
                 }
 
-                string file = playlist[currentIndex];
-                if (!File.Exists(file))
-                {
-                    if (userAction)
-                        ViewMenuHandler.ShowToast(mainWindow, $"File not found: {file}");
-                    return;
-                }
+               
+
+
+
 
                 // Clear previous subtitles
                 ClearSubtitles();
@@ -302,7 +364,12 @@ namespace NMH_Media_Player.Modules
 
                 mediaPlayer.Source = new Uri(file);
 
-                // Resume logic only once per session
+                UpdateWindowTitle();
+
+                // Apply playback speed
+                mediaPlayer.SpeedRatio = playbackSettings.PlaybackSpeed;
+
+                // Resume logic
                 if (resumeFromLastPosition && !resumePrompted && file == LastFilePath && LastPosition > TimeSpan.Zero)
                 {
                     var result = MessageBox.Show(
@@ -317,12 +384,16 @@ namespace NMH_Media_Player.Modules
                     mediaPlayer.Position = TimeSpan.Zero;
                 }
 
-                mediaPlayer.Play();
-                timer.Start();
+                // Start playback if requested
+                if (startPlayback)
+                {
+                    mediaPlayer.Play();
+                    timer.Start();
+                }
 
+                UpdateBackgroundVisibility(); // hide "No Media" text
 
-                UpdateBackgroundVisibility(); //   hide "No Media" text if stopped
-
+                // Save recent file
                 RecentFileHelper.AddRecentFile(file);
 
                 // Auto-load subtitles
@@ -336,6 +407,8 @@ namespace NMH_Media_Player.Modules
                     ViewMenuHandler.ShowToast(mainWindow, $"Failed to play video: {ex.Message}");
             }
         }
+
+
 
 
 
@@ -420,34 +493,7 @@ namespace NMH_Media_Player.Modules
 
 
 
-        //--------------------------------------- Used for Forawarding and Rewinding the media ----------------------------
-        // used in the NavigationEvents.cs File
-
-        // Skip forward
-        //public void Forward(int seconds = 10)
-        //{
-        //    if (mediaPlayer.Source != null && mediaPlayer.NaturalDuration.HasTimeSpan)
-        //    {
-        //        TimeSpan newPosition = mediaPlayer.Position + TimeSpan.FromSeconds(seconds);
-        //        if (newPosition > mediaPlayer.NaturalDuration.TimeSpan)
-        //            newPosition = mediaPlayer.NaturalDuration.TimeSpan;
-
-        //        mediaPlayer.Position = newPosition;
-        //    }
-        //}
-
-        //// Skip backward
-        //public void Rewind(int seconds = 10)
-        //{
-        //    if (mediaPlayer.Source != null)
-        //    {
-        //        TimeSpan newPosition = mediaPlayer.Position - TimeSpan.FromSeconds(seconds);
-        //        if (newPosition < TimeSpan.Zero)
-        //            newPosition = TimeSpan.Zero;
-
-        //        mediaPlayer.Position = newPosition;
-        //    }
-        //}
+        
 
 
 
@@ -477,68 +523,7 @@ namespace NMH_Media_Player.Modules
 
 
 
-        //// Load subtitles from a .srt file
-        //public void LoadSubtitles(string filePath)
-        //{
-        //    if (!File.Exists(filePath))
-        //    {
-        //        MessageBox.Show($"Subtitle file not found:\n{filePath}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        //        return;
-        //    }
-
-        //    try
-        //    {
-        //        CurrentSubtitleFile = filePath;
-        //        SubtitleEntries.Clear();
-
-        //        string[] lines = File.ReadAllLines(filePath);
-        //        SubtitleEntry? entry = null;
-        //        var timeRegex = new Regex(@"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})");
-
-        //        foreach (var line in lines)
-        //        {
-        //            if (string.IsNullOrWhiteSpace(line))
-        //            {
-        //                if (entry != null)
-        //                {
-        //                    SubtitleEntries.Add(entry);
-        //                    entry = null;
-        //                }
-        //                continue;
-        //            }
-
-        //            if (int.TryParse(line.Trim(), out int _)) // subtitle index line
-        //                continue;
-
-        //            var match = timeRegex.Match(line);
-        //            if (match.Success)
-        //            {
-        //                entry = new SubtitleEntry
-        //                {
-        //                    StartTime = TimeSpan.ParseExact(match.Groups[1].Value, @"hh\:mm\:ss\,fff", null),
-        //                    EndTime = TimeSpan.ParseExact(match.Groups[2].Value, @"hh\:mm\:ss\,fff", null)
-        //                };
-        //            }
-        //            else if (entry != null)
-        //            {
-        //                if (!string.IsNullOrEmpty(entry.Text))
-        //                    entry.Text += "\n";
-        //                entry.Text += line.Trim();
-        //            }
-        //        }
-
-        //        if (entry != null)
-        //            SubtitleEntries.Add(entry);
-
-        //        // Instead of MessageBox.Show
-        //        ViewMenuHandler.ShowToast(mainWindow, $"Loaded {SubtitleEntries.Count} subtitle lines.");
-
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        MessageBox.Show($"Failed to load subtitles:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        //    }
-        //}
+        
 
 
 
@@ -640,169 +625,101 @@ namespace NMH_Media_Player.Modules
 
 
 
-        
 
 
 
 
 
 
-        public async Task PlayCurrentWithFilterRealtimeAsync(bool startPlayback = true)
-        {
-            try
-            {
-                string file = GetCurrentFile();
-                if (string.IsNullOrEmpty(file)) return;
 
-                // Stop any previous analysis first
-                _analysisCts?.Cancel();
-                _analysisCts = new CancellationTokenSource();
-                var token = _analysisCts.Token;
+        //public async Task PlayCurrentWithFilterRealtimeAsync(bool startPlayback = true)
+        //{
+        //    try
+        //    {
+        //        string file = GetCurrentFile();
+        //        if (string.IsNullOrEmpty(file)) return;
 
-                // ------------------- Playback Prep -------------------
-                if (playlist == null || playlist.Count == 0)
-                {
-                    ViewMenuHandler.ShowToast(mainWindow, "Playlist is empty!");
-                    return;
-                }
+        //        // Stop any previous analysis first
+        //        _analysisCts?.Cancel();
+        //        _analysisCts = new CancellationTokenSource();
+        //        var token = _analysisCts.Token;
 
-                if (currentIndex < 0 || currentIndex >= playlist.Count)
-                {
-                    ViewMenuHandler.ShowToast(mainWindow, "No video selected!");
-                    return;
-                }
+        //        // ------------------- Playback Prep -------------------
+        //        if (playlist == null || playlist.Count == 0)
+        //        {
+        //            ViewMenuHandler.ShowToast(mainWindow, "Playlist is empty!");
+        //            return;
+        //        }
 
-                if (!File.Exists(file))
-                {
-                    ViewMenuHandler.ShowToast(mainWindow, $"File not found: {file}");
-                    return;
-                }
+        //        if (currentIndex < 0 || currentIndex >= playlist.Count)
+        //        {
+        //            ViewMenuHandler.ShowToast(mainWindow, "No video selected!");
+        //            return;
+        //        }
 
-                // Clear previous subtitles
-                ClearSubtitles();
+        //        if (!File.Exists(file))
+        //        {
+        //            ViewMenuHandler.ShowToast(mainWindow, $"File not found: {file}");
+        //            return;
+        //        }
 
-                // Reset UI
-                if (mainWindow != null)
-                {
-                    mainWindow.progressSlider.Value = 0;
-                    mainWindow.lblDuration.Content = "00:00:00 / 00:00:00";
-                }
+        //        // Clear previous subtitles
+        //        ClearSubtitles();
 
-                mediaPlayer.Source = new Uri(file);
-                if (startPlayback)
-                {
-                    mediaPlayer.Play();
-                    timer.Start();
-                }
+        //        // Reset UI
+        //        if (mainWindow != null)
+        //        {
+        //            mainWindow.progressSlider.Value = 0;
+        //            mainWindow.lblDuration.Content = "00:00:00 / 00:00:00";
+        //        }
 
-                // Resume logic only once per session
-                if (file == LastFilePath && LastPosition > TimeSpan.Zero && !resumePrompted)
-                {
-                    var result = MessageBox.Show(
-                        $"Do you want to resume '{Path.GetFileName(file)}' from {LastPosition:hh\\:mm\\:ss}?",
-                        "Resume Playback", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        //        mediaPlayer.Source = new Uri(file);
+        //        if (startPlayback)
+        //        {
+        //            mediaPlayer.Play();
+        //            timer.Start();
+        //        }
 
-                    mediaPlayer.Position = result == MessageBoxResult.Yes ? LastPosition : TimeSpan.Zero;
-                    resumePrompted = true;
-                }
-                else
-                {
-                    mediaPlayer.Position = TimeSpan.Zero;
-                }
+        //        // Resume logic only once per session
+        //        if (file == LastFilePath && LastPosition > TimeSpan.Zero && !resumePrompted)
+        //        {
+        //            var result = MessageBox.Show(
+        //                $"Do you want to resume '{Path.GetFileName(file)}' from {LastPosition:hh\\:mm\\:ss}?",
+        //                "Resume Playback", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
-                // Start playback immediately
-                mediaPlayer.Play();
-                timer.Start();
-                UpdateBackgroundVisibility(); // hide "No Media" text
+        //            mediaPlayer.Position = result == MessageBoxResult.Yes ? LastPosition : TimeSpan.Zero;
+        //            resumePrompted = true;
+        //        }
+        //        else
+        //        {
+        //            mediaPlayer.Position = TimeSpan.Zero;
+        //        }
 
-                // ------------------- Save Recent & Load Subtitles -------------------
-                RecentFileHelper.AddRecentFile(file);
+        //        // Start playback immediately
+        //        mediaPlayer.Play();
+        //        timer.Start();
+        //        UpdateBackgroundVisibility(); // hide "No Media" text
 
-                string subtitlePath = Path.ChangeExtension(file, ".srt");
-                if (File.Exists(subtitlePath))
-                    LoadSubtitles(subtitlePath);
+        //        // ------------------- Save Recent & Load Subtitles -------------------
+        //        RecentFileHelper.AddRecentFile(file);
 
-                // ------------------- Skip filter for audio -------------------
-                //if (IsAudioFile(file)) return;
+        //        string subtitlePath = Path.ChangeExtension(file, ".srt");
+        //        if (File.Exists(subtitlePath))
+        //            LoadSubtitles(subtitlePath);
 
-                //if (!Filter.IsModelLoaded)
-                //{
-                //    MessageBox.Show(
-                //        "⚠️ Unsafe content filter is not loaded. Analysis skipped.",
-                //        "Filter Not Ready",
-                //        MessageBoxButton.OK,
-                //        MessageBoxImage.Warning);
-                //    return;
-                //}
 
-                //bool blocked = false;
 
-                //// Extract frames
-                //await Filter.CaptureFramesAsync(file);
-
-                //// Background analysis
-                //_ = Task.Run(async () =>
-                //{
-                //    try
-                //    {
-                //        await Filter.AnalyzeFramesAsync(
-                //            onUnsafeDetected: () =>
-                //            {
-                //                if (token.IsCancellationRequested) return;
-                //                Application.Current.Dispatcher.Invoke(() =>
-                //                {
-                //                    if (blocked) return;
-                //                    blocked = true;
-                //                    MessageBox.Show(
-                //                        "⚠️ Unsafe content detected!",
-                //                        "Content Warning",
-                //                        MessageBoxButton.OK,
-                //                        MessageBoxImage.Warning);
-                //                    Pause();
-                //                });
-                //            },
-                //            skipForwardAsync: async () =>
-                //            {
-                //                if (token.IsCancellationRequested) return;
-                //                await Application.Current.Dispatcher.InvokeAsync(() =>
-                //                {
-                //                    try
-                //                    {
-                //                        if (mediaPlayer == null) return;
-                //                        var newPos = mediaPlayer.Position.TotalSeconds + 10;
-                //                        if (newPos < mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds)
-                //                            mediaPlayer.Position = TimeSpan.FromSeconds(newPos);
-                //                        else
-                //                            Pause();
-                //                    }
-                //                    catch (Exception innerEx)
-                //                    {
-                //                        Debug.WriteLine($"SkipForwardAsync error: {innerEx.Message}");
-                //                    }
-                //                });
-                //            });
-                //    }
-                //    catch (OperationCanceledException)
-                //    {
-                //        Debug.WriteLine("Frame analysis cancelled.");
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        Debug.WriteLine($"AnalyzeFramesAsync error: {ex}");
-                //    }
-                //}, token);
-
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.WriteLine("PlayCurrentWithFilterRealtimeAsync cancelled.");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"PlayCurrentWithFilterRealtimeAsync failed: {ex}");
-                MessageBox.Show($"Unexpected error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+        //    }
+        //    catch (OperationCanceledException)
+        //    {
+        //        Debug.WriteLine("PlayCurrentWithFilterRealtimeAsync cancelled.");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Debug.WriteLine($"PlayCurrentWithFilterRealtimeAsync failed: {ex}");
+        //        MessageBox.Show($"Unexpected error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        //    }
+        //}
 
 
 
@@ -811,11 +728,14 @@ namespace NMH_Media_Player.Modules
 
         private void UpdateBackgroundVisibility()
         {
+            if (noMediaBackground == null) return;
+
             if (mediaPlayer.Source == null)
                 noMediaBackground.Show();
             else
                 noMediaBackground.Hide();
         }
+
 
 
         public void InitializeNoMediaBackground(Grid grid)
@@ -824,6 +744,104 @@ namespace NMH_Media_Player.Modules
             UpdateBackgroundVisibility();
         }
 
+
+
+
+
+
+        //private void ApplyPlaybackSettings()
+        //{
+        //    if (mediaPlayer == null || playbackSettings == null) return;
+
+        //    // Playback speed
+        //    mediaPlayer.SpeedRatio = playbackSettings.PlaybackSpeed;
+
+        //    // Remove existing MediaEnded subscription to avoid duplicates
+        //    mediaPlayer.MediaEnded -= MediaPlayer_MediaEnded;
+
+        //    // Subscribe if looping or auto-next is enabled
+        //    if (playbackSettings.LoopSingle || playbackSettings.AutoPlayNext)
+        //    {
+        //        mediaPlayer.MediaEnded += MediaPlayer_MediaEnded;
+        //    }
+        //}
+
+
+        private void ApplyPlaybackSettings()
+        {
+            if (mediaPlayer == null || playbackSettings == null) return;
+
+            // Set playback speed safely
+            try
+            {
+                mediaPlayer.SpeedRatio = playbackSettings.PlaybackSpeed;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error setting playback speed: {ex.Message}");
+            }
+
+            // Remove previous subscription to prevent duplicates
+            mediaPlayer.MediaEnded -= MediaPlayer_MediaEnded;
+
+            // Subscribe if looping or autoplay next is enabled
+            if (playbackSettings.LoopSingle || playbackSettings.AutoPlayNext)
+            {
+                mediaPlayer.MediaEnded += MediaPlayer_MediaEnded;
+            }
+        }
+
+
+
+        private void PlaybackSettings_SettingsChanged(object? sender, EventArgs e)
+        {
+            // This runs on UI thread
+            Application.Current.Dispatcher.Invoke(() => ApplyPlaybackSettings());
+        }
+
+
+
+        private void MediaPlayer_MediaEnded(object sender, RoutedEventArgs e)
+        {
+            // Just forward the event to your static handler
+            MediaPlayerEvents.MediaEnded(sender, e);
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+        public void ApplyHardwareAcceleration(bool enabled) => PlaybackSettingsManager.Instance.EnableHardwareAcceleration = enabled;
+        public void ApplyMultiThreadedDecoding(bool enabled) => PlaybackSettingsManager.Instance.EnableMultiThreadedDecoding = enabled;
+        public void ApplyCustomRenderPipeline(bool enabled) => PlaybackSettingsManager.Instance.UseCustomRenderPipeline = enabled;
+        public void ApplyBetaFeatures(bool enabled) => PlaybackSettingsManager.Instance.EnableBetaFeatures = enabled;
+
+
+
+
+
+
+        private void UpdateWindowTitle()
+        {
+            if (mainWindow == null) return;
+
+            string currentFile = CurrentFile;
+           
+
+            string displayTitle = string.IsNullOrEmpty(currentFile)
+    ? "NMH Media Player"
+    : $"NMH Media Player - {Path.GetFileName(currentFile)}";
+
+            mainWindow.SetCustomTitle(displayTitle);
+
+        }
 
 
     }

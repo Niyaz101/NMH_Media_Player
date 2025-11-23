@@ -15,27 +15,27 @@ namespace NMH_Media_Player.Modules.Handlers
         #region ------------------- Open Media -------------------
 
         // Generic helper to open media files repeated in the bellow three methods.
-        private static async void OpenMediaFilesAsync(MainWindow window, List<string> files)
+        private static  void OpenMediaFiles(MainWindow window, List<string> files)
         {
             if (files == null || files.Count == 0) return;
 
             window.mediaController.SetPlaylist(files);
-            await window.mediaController.PlayCurrentWithFilterRealtimeAsync();
+            window.mediaController.PlayCurrent();
         }
 
-        public static async void BtnOpen_Click(MainWindow window)
+        public static  void BtnOpen_Click(MainWindow window)
         {
             var files = FileManager.OpenFiles();
-            OpenMediaFilesAsync(window, files);
+            OpenMediaFiles(window, files);
         }
 
-        public static async void OpenDirectory_Click(MainWindow window)
+        public static  void OpenDirectory_Click(MainWindow window)
         {
             var files = FileManager.OpenDirectory();
-            OpenMediaFilesAsync(window, files);
+            OpenMediaFiles(window, files);
         }
 
-        public static async void OpenFileUrl_Click(MainWindow window)
+        public static  void OpenFileUrl_Click(MainWindow window)
         {
             var urlWindow = new InputBoxWindow("Enter File URL", "Please enter the media URL:")
             {
@@ -53,10 +53,10 @@ namespace NMH_Media_Player.Modules.Handlers
             }
 
             window.mediaController.AddToPlaylist(url);
-            await window.mediaController.PlayCurrentWithFilterRealtimeAsync();
+             window.mediaController.PlayCurrent();
         }
 
-        public static async void QuickOpenFile_Click(object sender, RoutedEventArgs e, MediaController mediaController)
+        public static  void QuickOpenFile_Click(object sender, RoutedEventArgs e, MediaController mediaController)
         {
             try
             {
@@ -86,7 +86,7 @@ namespace NMH_Media_Player.Modules.Handlers
                 }
 
                 mediaController.SetPlaylist(files);
-                await mediaController.PlayCurrentWithFilterRealtimeAsync();
+                 mediaController.PlayCurrent();
             }
             catch (Exception ex)
             {

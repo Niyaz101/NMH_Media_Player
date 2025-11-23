@@ -184,7 +184,7 @@ namespace NMH_Media_Player.Modules.Handlers
                         IsEnabled = exists
                     };
 
-                    fileItem.Click += async (_, _) =>
+                    fileItem.Click +=  (_, _) =>
                     {
                         if (!exists)
                         {
@@ -196,7 +196,7 @@ namespace NMH_Media_Player.Modules.Handlers
                         if (Application.Current.MainWindow is MainWindow main && main.mediaController != null)
                         {
                             mediaController.SetPlaylist(new List<string> { file });
-                          await  mediaController.PlayCurrentWithFilterRealtimeAsync();
+                            mediaController.PlayCurrent();
                             RecentFileHelper.AddRecentFile(file);
                         }
                         else

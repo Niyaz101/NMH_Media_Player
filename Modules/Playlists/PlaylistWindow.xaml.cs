@@ -67,7 +67,33 @@ namespace NMH_Media_Player.Modules.Playlists
         }
 
 
-        private void BtnAdd_Click(object sender, RoutedEventArgs e)
+        //private void BtnAdd_Click(object sender, RoutedEventArgs e)
+        //{
+        //    var dlg = new OpenFileDialog
+        //    {
+        //        Title = "Add Audio/Video Files to Playlist",
+        //        Filter = "Media Files|*.mp4;*.mp3;*.wav;*.avi;*.mkv;*.wmv;*.flac;*.mov|All Files|*.*",
+        //        Multiselect = true
+        //    };
+
+        //    if (dlg.ShowDialog() == true)
+        //    {
+        //        foreach (var file in dlg.FileNames)
+        //        {
+        //            Tracks.Add(new PlaylistTrack
+        //            {
+        //                Title = System.IO.Path.GetFileNameWithoutExtension(file),
+        //                FilePath = file,
+        //                Duration = "Unknown"
+        //            });
+        //        }
+
+        //        ViewMenuHandler.ShowToast((MainWindow)Owner, $"{dlg.FileNames.Length} track(s) added to playlist.");
+        //    }
+        //}
+
+
+        private async void BtnAdd_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new OpenFileDialog
             {
@@ -78,19 +104,53 @@ namespace NMH_Media_Player.Modules.Playlists
 
             if (dlg.ShowDialog() == true)
             {
+                int addedCount = 0;
                 foreach (var file in dlg.FileNames)
                 {
-                    Tracks.Add(new PlaylistTrack
+                    if (Tracks.Any(t => t.FilePath == file)) continue; // skip duplicates
+
+                    var track = new PlaylistTrack
                     {
-                        Title = System.IO.Path.GetFileNameWithoutExtension(file),
                         FilePath = file,
-                        Duration = "Unknown"
+                        Title = Path.GetFileNameWithoutExtension(file),
+                        Duration = "Loading..."
+                    };
+
+                    Tracks.Add(track);
+                    addedCount++;
+
+                    // Load duration asynchronously
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            var media = new System.Windows.Media.MediaPlayer();
+                            media.Open(new Uri(file));
+                            media.Dispatcher.Invoke(() =>
+                            {
+                                if (media.NaturalDuration.HasTimeSpan)
+                                    track.Duration = media.NaturalDuration.TimeSpan.ToString(@"hh\:mm\:ss");
+                                else
+                                    track.Duration = "Unknown";
+                            });
+                        }
+                        catch
+                        {
+                            track.Duration = "Unknown";
+                        }
                     });
                 }
 
-                ViewMenuHandler.ShowToast((MainWindow)Owner, $"{dlg.FileNames.Length} track(s) added to playlist.");
+                ViewMenuHandler.ShowToast((MainWindow)Owner, $"{addedCount} track(s) added to playlist.");
+
+                // Update MediaController playlist
+                if (Owner is MainWindow main)
+                {
+                    main.mediaController.SetPlaylist(Tracks.Select(t => t.FilePath).ToList());
+                }
             }
         }
+
 
         private void BtnRemove_Click(object sender, RoutedEventArgs e)
         {
@@ -147,6 +207,23 @@ namespace NMH_Media_Player.Modules.Playlists
             }
         }
 
+        //private void BtnPlay_Click(object sender, RoutedEventArgs e)
+        //{
+        //    if (Tracks.Count == 0)
+        //    {
+        //        MessageBox.Show("No tracks to play!");
+        //        return;
+        //    }
+
+        //    string firstTrack = Tracks.First().FilePath;
+
+        //    // use the main controller
+        //    var main = (MainWindow)Owner;
+        //    main.mediaController.PlayFromPlaylist(firstTrack);
+
+        //    ViewMenuHandler.ShowToast(main, $"Now playing playlist ({Tracks.Count} tracks).");
+        //}
+
         private void BtnPlay_Click(object sender, RoutedEventArgs e)
         {
             if (Tracks.Count == 0)
@@ -155,27 +232,43 @@ namespace NMH_Media_Player.Modules.Playlists
                 return;
             }
 
-            string firstTrack = Tracks.First().FilePath;
-
-            // use the main controller
             var main = (MainWindow)Owner;
-            main.mediaController.PlayFromPlaylist(firstTrack);
+
+            // Sync the MediaController playlist
+            main.mediaController.SetPlaylist(Tracks.Select(t => t.FilePath).ToList());
+
+            // Play the first track
+            main.mediaController.PlayCurrent(startPlayback: true);
 
             ViewMenuHandler.ShowToast(main, $"Now playing playlist ({Tracks.Count} tracks).");
         }
 
 
+        //private void PlaylistGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        //{
+        //    if (PlaylistGrid.SelectedItem is PlaylistTrack track)
+        //    {
+        //        MainWindow main = (MainWindow)Application.Current.MainWindow;
+        //        main.PlayPlaylistTrack(track.FilePath);
+        //        ViewMenuHandler.ShowToast((MainWindow)Owner, $"Now playing: {track.Title}");
+        //    }
+        //}
 
         private void PlaylistGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (PlaylistGrid.SelectedItem is PlaylistTrack track)
             {
-                MainWindow main = (MainWindow)Application.Current.MainWindow;
-                main.PlayPlaylistTrack(track.FilePath);
-                ViewMenuHandler.ShowToast((MainWindow)Owner, $"Now playing: {track.Title}");
+                MainWindow main = (MainWindow)Owner;
+
+                // Ensure controller playlist is synced
+                main.mediaController.SetPlaylist(Tracks.Select(t => t.FilePath).ToList());
+
+                // Play selected track
+                main.mediaController.PlayFromPlaylist(track.FilePath);
+
+                ViewMenuHandler.ShowToast(main, $"Now playing: {track.Title}");
             }
         }
-
 
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)

@@ -1,11 +1,12 @@
-﻿using System;
+﻿using NMH_Media_Player.Playback;
+using NMH_Media_Player.Properties;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Shapes;
-using System.IO;
-using NMH_Media_Player.Properties;
 
 namespace NMH_Media_Player.SettingsTabs
 {
@@ -19,19 +20,40 @@ namespace NMH_Media_Player.SettingsTabs
 
         private void LoadSettings()
         {
-            // Performance & Caching
-            sliderBufferSize.Value = Settings.Default.BufferSize;
-            chkEnableHardwareAcceleration.IsChecked = Settings.Default.EnableHardwareAcceleration;
-            chkEnableMultiThreadedDecoding.IsChecked = Settings.Default.EnableMultiThreadedDecoding;
-
-            // Logging / Debug
-            chkEnableVerboseLogging.IsChecked = Settings.Default.EnableVerboseLogging;
-            chkShowDebugOverlay.IsChecked = Settings.Default.ShowDebugOverlay;
-
-            // Experimental Features
-            chkEnableBetaFeatures.IsChecked = Settings.Default.EnableBetaFeatures;
-            chkUseCustomRenderPipeline.IsChecked = Settings.Default.UseCustomRenderPipeline;
+            sliderBufferSize.Value = PlaybackSettingsManager.Instance.BufferSizeMb;
+            chkEnableHardwareAcceleration.IsChecked = PlaybackSettingsManager.Instance.EnableHardwareAcceleration;
+            chkEnableMultiThreadedDecoding.IsChecked = PlaybackSettingsManager.Instance.EnableMultiThreadedDecoding;
+            chkUseCustomRenderPipeline.IsChecked = PlaybackSettingsManager.Instance.UseCustomRenderPipeline;
+            chkEnableBetaFeatures.IsChecked = PlaybackSettingsManager.Instance.EnableBetaFeatures;
         }
+            
+
+        private void HardwareAcceleration_Changed(object sender, RoutedEventArgs e)
+        {
+            PlaybackSettingsManager.Instance.EnableHardwareAcceleration = chkEnableHardwareAcceleration.IsChecked ?? false;
+            PlaybackSettingsManager.Instance.Save();
+        }
+
+        private void MultiThreaded_Changed(object sender, RoutedEventArgs e)
+        {
+            PlaybackSettingsManager.Instance.EnableMultiThreadedDecoding = chkEnableMultiThreadedDecoding.IsChecked ?? false;
+            PlaybackSettingsManager.Instance.Save();
+        }
+
+        private void CustomRender_Changed(object sender, RoutedEventArgs e)
+        {
+            PlaybackSettingsManager.Instance.UseCustomRenderPipeline = chkUseCustomRenderPipeline.IsChecked ?? false;
+            PlaybackSettingsManager.Instance.Save();
+        }
+
+        private void BetaFeatures_Changed(object sender, RoutedEventArgs e)
+        {
+            PlaybackSettingsManager.Instance.EnableBetaFeatures = chkEnableBetaFeatures.IsChecked ?? false;
+            PlaybackSettingsManager.Instance.Save();
+        }
+
+       
+
 
         private void SaveSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -90,3 +112,5 @@ namespace NMH_Media_Player.SettingsTabs
         }
     }
 }
+
+
