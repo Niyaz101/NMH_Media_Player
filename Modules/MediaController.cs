@@ -1,8 +1,8 @@
 ﻿using NMH.VideoFilter;
 using NMH_Media_Player.Handlers;
 using NMH_Media_Player.Modules.Helpers;
-using NMH_Media_Player.Subtiltles;
 using NMH_Media_Player.Playback;
+using NMH_Media_Player.Subtitles;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -54,7 +54,16 @@ namespace NMH_Media_Player.Modules
                          "NMH_Media_Player", "resume.txt");
 
         // ========================= Subtitles =========================
-      
+
+        // ========================= Embedded Subtitles =========================
+        // ========================= Embedded Subtitles =========================
+        public List<EmbeddedSubtitleTrack> EmbeddedSubtitleTracks { get; private set; } = new();
+        public int CurrentEmbeddedSubtitleIndex { get; set; } = -1;  // Changed to public set
+        public bool UseEmbeddedSubtitles { get; set; } = false;      // Changed to public set
+        public EmbeddedSubtitleTrack? ActiveEmbeddedSubtitle { get; private set; }
+
+
+
         public string? CurrentSubtitleFile { get; private set; } = null;
 
         // ✅ Use the MainWindow's timer instead of creating a new one
@@ -71,7 +80,7 @@ namespace NMH_Media_Player.Modules
             // Attach only the subtitle update tick to the shared timer
             timer.Tick += SubtitleTimer_Tick;
 
-
+        
 
             // Apply initial playback settings
             ApplyPlaybackSettings();
@@ -347,8 +356,10 @@ namespace NMH_Media_Player.Modules
                     return;
                 }
 
-               
 
+
+                // Detect embedded subtitle tracks
+              
 
 
 
@@ -363,6 +374,13 @@ namespace NMH_Media_Player.Modules
                 }
 
                 mediaPlayer.Source = new Uri(file);
+
+
+                // ------------------- Load Embedded Subtitles -------------------
+                // ✅ DETECT EMBEDDED SUBTITLES (Add this line)
+                DetectEmbeddedSubtitles(file);
+
+               
 
                 UpdateWindowTitle();
 
@@ -396,10 +414,21 @@ namespace NMH_Media_Player.Modules
                 // Save recent file
                 RecentFileHelper.AddRecentFile(file);
 
-                // Auto-load subtitles
-                string subtitlePath = Path.ChangeExtension(file, ".srt");
-                if (File.Exists(subtitlePath))
-                    LoadSubtitles(subtitlePath);
+                // ✅ AUTO-LOAD FIRST EMBEDDED SUBTITLE IF AVAILABLE (Optional)
+                if (EmbeddedSubtitleTracks.Any())
+                {
+                    var defaultTrack = EmbeddedSubtitleTracks.FirstOrDefault(t => t.IsDefault) ?? EmbeddedSubtitleTracks.First();
+                    LoadEmbeddedSubtitleAsExternal(defaultTrack.TrackIndex);
+                }
+                else
+                {
+                    // Fall back to external subtitle file
+                    string subtitlePath = Path.ChangeExtension(file, ".srt");
+                    if (File.Exists(subtitlePath))
+                        LoadSubtitles(subtitlePath);
+                }
+
+              
             }
             catch (Exception ex)
             {
@@ -602,6 +631,9 @@ namespace NMH_Media_Player.Modules
 
 
 
+
+
+
         // used for playing a specific file from the playlist
         public void PlayFromPlaylist(string filePath)
         {
@@ -621,108 +653,6 @@ namespace NMH_Media_Player.Modules
 
             PlayCurrent(); // uses your main play logic
         }
-
-
-
-
-
-
-
-
-
-
-
-        //public async Task PlayCurrentWithFilterRealtimeAsync(bool startPlayback = true)
-        //{
-        //    try
-        //    {
-        //        string file = GetCurrentFile();
-        //        if (string.IsNullOrEmpty(file)) return;
-
-        //        // Stop any previous analysis first
-        //        _analysisCts?.Cancel();
-        //        _analysisCts = new CancellationTokenSource();
-        //        var token = _analysisCts.Token;
-
-        //        // ------------------- Playback Prep -------------------
-        //        if (playlist == null || playlist.Count == 0)
-        //        {
-        //            ViewMenuHandler.ShowToast(mainWindow, "Playlist is empty!");
-        //            return;
-        //        }
-
-        //        if (currentIndex < 0 || currentIndex >= playlist.Count)
-        //        {
-        //            ViewMenuHandler.ShowToast(mainWindow, "No video selected!");
-        //            return;
-        //        }
-
-        //        if (!File.Exists(file))
-        //        {
-        //            ViewMenuHandler.ShowToast(mainWindow, $"File not found: {file}");
-        //            return;
-        //        }
-
-        //        // Clear previous subtitles
-        //        ClearSubtitles();
-
-        //        // Reset UI
-        //        if (mainWindow != null)
-        //        {
-        //            mainWindow.progressSlider.Value = 0;
-        //            mainWindow.lblDuration.Content = "00:00:00 / 00:00:00";
-        //        }
-
-        //        mediaPlayer.Source = new Uri(file);
-        //        if (startPlayback)
-        //        {
-        //            mediaPlayer.Play();
-        //            timer.Start();
-        //        }
-
-        //        // Resume logic only once per session
-        //        if (file == LastFilePath && LastPosition > TimeSpan.Zero && !resumePrompted)
-        //        {
-        //            var result = MessageBox.Show(
-        //                $"Do you want to resume '{Path.GetFileName(file)}' from {LastPosition:hh\\:mm\\:ss}?",
-        //                "Resume Playback", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-        //            mediaPlayer.Position = result == MessageBoxResult.Yes ? LastPosition : TimeSpan.Zero;
-        //            resumePrompted = true;
-        //        }
-        //        else
-        //        {
-        //            mediaPlayer.Position = TimeSpan.Zero;
-        //        }
-
-        //        // Start playback immediately
-        //        mediaPlayer.Play();
-        //        timer.Start();
-        //        UpdateBackgroundVisibility(); // hide "No Media" text
-
-        //        // ------------------- Save Recent & Load Subtitles -------------------
-        //        RecentFileHelper.AddRecentFile(file);
-
-        //        string subtitlePath = Path.ChangeExtension(file, ".srt");
-        //        if (File.Exists(subtitlePath))
-        //            LoadSubtitles(subtitlePath);
-
-
-
-        //    }
-        //    catch (OperationCanceledException)
-        //    {
-        //        Debug.WriteLine("PlayCurrentWithFilterRealtimeAsync cancelled.");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Debug.WriteLine($"PlayCurrentWithFilterRealtimeAsync failed: {ex}");
-        //        MessageBox.Show($"Unexpected error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        //    }
-        //}
-
-
-
 
 
 
@@ -836,15 +766,116 @@ namespace NMH_Media_Player.Modules
            
 
             string displayTitle = string.IsNullOrEmpty(currentFile)
-    ? "NMH Media Player"
-    : $"NMH Media Player - {Path.GetFileName(currentFile)}";
+            ? "NMH Media Player"
+            : $"NMH Media Player - {Path.GetFileName(currentFile)}";
 
             mainWindow.SetCustomTitle(displayTitle);
 
         }
 
 
+
+
+        // ========================= Embedded Subtitles Loading =========================
+        // ========================= Embedded Subtitles =========================
+
+
+        // Add this method to extract embedded subtitle as external file
+        public void LoadEmbeddedSubtitleAsExternal(int trackIndex)
+        {
+            try
+            {
+                var track = EmbeddedSubtitleTracks.FirstOrDefault(t => t.TrackIndex == trackIndex);
+                if (track == null) return;
+
+                string videoFile = CurrentFile;
+                if (string.IsNullOrEmpty(videoFile)) return;
+
+                // Extract embedded subtitle to temporary SRT file
+                string tempSubtitlePath = ExtractEmbeddedSubtitleToFile(videoFile, trackIndex);
+
+                if (!string.IsNullOrEmpty(tempSubtitlePath) && File.Exists(tempSubtitlePath))
+                {
+                    // Use your EXISTING external subtitle loading system
+                    LoadSubtitles(tempSubtitlePath);
+                    CurrentSubtitleFile = tempSubtitlePath; // Mark as temporary embedded file
+
+                    ViewMenuHandler.ShowToast(mainWindow, $"Loaded embedded subtitle: {track.Name}");
+
+                    // Optional: Auto-delete temp file when done (or keep for session)
+                    // You might want to track these temp files and clean them up on app exit
+                }
+                else
+                {
+                    ViewMenuHandler.ShowToast(mainWindow, "Failed to extract embedded subtitle");
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewMenuHandler.ShowToast(mainWindow, $"Failed to load embedded subtitle: {ex.Message}");
+            }
+        }
+
+        private string ExtractEmbeddedSubtitleToFile(string mediaFilePath, int trackIndex)
+        {
+            try
+            {
+                string tempPath = Path.GetTempFileName();
+                tempPath = Path.ChangeExtension(tempPath, ".srt");
+
+                // Use FFmpeg to extract the subtitle to a temporary file
+                var processStartInfo = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = $"-i \"{mediaFilePath}\" -map 0:s:{trackIndex} \"{tempPath}\" -y",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(processStartInfo);
+                if (process != null)
+                {
+                    process.WaitForExit(10000); // 10 second timeout
+                    return process.ExitCode == 0 ? tempPath : null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Extraction failed: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        // Simplified method to detect embedded subtitles
+        public void DetectEmbeddedSubtitles(string videoFilePath)
+        {
+            try
+            {
+                EmbeddedSubtitleTracks.Clear();
+
+                if (!File.Exists(videoFilePath)) return;
+
+                // Use your existing detector
+                var tracks = EmbeddedSubtitleDetector.GetEmbeddedSubtitles(videoFilePath);
+                if (tracks != null && tracks.Count > 0)
+                {
+                    EmbeddedSubtitleTracks.AddRange(tracks);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error detecting embedded subtitles: {ex.Message}");
+            }
+        }
+
+
+
+
+
     }
 
-
 }
+
+
+

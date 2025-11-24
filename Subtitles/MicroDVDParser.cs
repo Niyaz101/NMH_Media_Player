@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace NMH_Media_Player.Subtiltles
+namespace NMH_Media_Player.Subtitles
 {
     public class MicroDvdParser : ISubtitleParser
     {

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace NMH_Media_Player.Subtiltles
+namespace NMH_Media_Player.Subtitles
 {
     public class AssParser : ISubtitleParser
     {

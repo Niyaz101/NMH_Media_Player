@@ -249,6 +249,8 @@
                     </MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
+            <!-- Subtitles Menu -->
+            
 
             <!-- Help -->
             <MenuItem Header="_Help">
@@ -409,7 +411,17 @@
 
                 <Separator/>
                 <MenuItem Header="Exit" InputGestureText="Alt+X" Click="Exit_Click"/>
+
+                <!-- Subtitles Menu -->
+                <MenuItem Header="Subtitles" x:Name="SubtitleMenu">
+                    <MenuItem Header="None" Click="DisableSubtitles_Click"/>
+                    <MenuItem Header="Load External..." Click="View_LoadSubtitle_Click"/>
+                    <!-- Embedded subtitles will be added dynamically here -->
+                </MenuItem>
+
             </MenuItem>
+
+            
 
             <!-- ================== 2nd Menu: This is the View Menu ==================================-->
             <MenuItem Header="_View">

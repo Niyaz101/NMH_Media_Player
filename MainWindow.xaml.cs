@@ -14,6 +14,7 @@ using NMH_Media_Player.Thumbnails;
 using NMH_Media_Player.VideoScaling;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -152,161 +153,50 @@ namespace NMH_Media_Player
             // Apply saved theme AFTER window is fully loaded
             Loaded += MainWindow_Loaded;
 
-
-            #region This is the Key Binding For View Menu Shortcuts
-
-            // Ctrl+0 shows/hides the menu, this is for View Menu
-            var toggleMenuCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(toggleMenuCommand, new KeyGesture(Key.D0, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(toggleMenuCommand,
-                (s, e) => ViewMenuHandler.HideMenu_Click(null, null, this)));
+            InitializeKeyboardShortcuts();
 
 
-            // Ctrl+1 shows/hides the Seek Bar (View Menu)
-            var toggleSeekBarCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(toggleSeekBarCommand, new KeyGesture(Key.D1, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(toggleSeekBarCommand,
-                (s, e) => ViewMenuHandler.SeekBar_Click(null, null, this)));
-
-
-
-            // Ctrl+2 shows/hides the control bar
-            var toggleControlsCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(toggleControlsCommand, new KeyGesture(Key.D2, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(toggleControlsCommand,
-                (s, e) => ViewMenuHandler.Controls_Click(null, null, this)));
-
-
-            // Ctrl+3 shows the Information window
-            var infoCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(infoCommand, new KeyGesture(Key.D3, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(infoCommand,
-                (s, e) => ViewMenuHandler.Information_Click(null, null, this)));
-
-
-
-            //Ctrl+4 Show the Satistics of Playing File
-            var statisticCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(statisticCommand, new KeyGesture(Key.D4, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(statisticCommand,
-                (s, e) => ViewMenuHandler.Statistics_Click(null, null, this)));
-
-
-
-
-          
-
-            // Ctrl+5 Shows the Status of current File
-            var showToastCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(showToastCommand, new KeyGesture(Key.D5, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(showToastCommand, (s, e) => ViewMenuHandler.Status_Click(null, null, this)));
-
-
-            // Define the command
-            var saveSubtitleCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(saveSubtitleCommand, new KeyGesture(Key.S, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(saveSubtitleCommand, (s, e) => ViewMenuHandler.LoadSubtitle_Click(null, null, this)));
-
-
-            // Define the command for Subtitle Sync
-            var subtitleSyncCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(subtitleSyncCommand, new KeyGesture(Key.D6, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(subtitleSyncCommand,
-                (s, e) => ViewMenuHandler.Subresync_Click(null, null, this)));
-
-            // Define the command for Playlist
-            var playlistCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(playlistCommand, new KeyGesture(Key.D7, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(playlistCommand,
-                (s, e) => ViewMenuHandler.Playlist_Click(null, null, this)));
-
-            // Define the command for Capture
-            var captureCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(captureCommand, new KeyGesture(Key.D8, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(captureCommand,
-                (s, e) => ViewMenuHandler.Capture_Click(null, null, this)));
-
-
-            // Define the command for Fullscreen
-            var fullscreenCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(fullscreenCommand, new KeyGesture(Key.F11)));
-            CommandBindings.Add(new CommandBinding(fullscreenCommand,
-                (s, e) => ViewMenuHandler.FullScreen_Click(null, null, this)));
-
-
-
-            #endregion
-
-            #region This Area is for the File Menu Keyboard Shortcuts
-            // Define the Open File command
-            var openFileCommand = new RoutedCommand(); 
-            InputBindings.Add(new KeyBinding(openFileCommand, new KeyGesture(Key.Q, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(openFileCommand, (s, e) => BtnOpen_Click(null, null)));
-
-            // Define the Open URL command
-            var openUrlCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(openUrlCommand, new KeyGesture(Key.O, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(openUrlCommand, (s, e) => OpenFileUrl_Click(null, null)));
-
-
-            // Define the Open DVD/CD command
-            var openDvdCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(openDvdCommand, new KeyGesture(Key.C, ModifierKeys.Control )));
-            CommandBindings.Add(new CommandBinding(openDvdCommand, (s, e) => OpenDVD_Click(null, null)));
-
-            // Define open Device coomand
-            var openDeviceCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(openDeviceCommand, new KeyGesture(Key.I, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(openDeviceCommand, (s, e) => OpenDevice_Click(null, null) ));
-            // Define the Open Folder command
-            var openDirectoryCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(openDirectoryCommand, new KeyGesture(Key.D, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(openDirectoryCommand, (s, e) => OpenDirectory_Click(null, null)));
-
-            // Define the open Disc command
-            var openDiscCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(openDiscCommand, new KeyGesture(Key.K, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(openDiscCommand, (s, e) => OpenDisc_Click(null, null)));
-
-            // Defiene the save copy command
-            var saveCopyCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(saveCopyCommand, new KeyGesture(Key.S, ModifierKeys.Alt)));
-            CommandBindings.Add(new CommandBinding(saveCopyCommand, (s, e) => SaveCopy_Click(null, null)));
-
-            // Define the Save Image command
-            var saveImageCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(saveImageCommand, new KeyGesture(Key.I, ModifierKeys.Alt)));
-            CommandBindings.Add(new CommandBinding(saveImageCommand, (s, e) => SaveImage_Click(null, null)));
-
-            // Define the Save Thumbnails command
-            var saveThumbnailsCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(saveThumbnailsCommand, new KeyGesture(Key.T, ModifierKeys.Control)));
-            CommandBindings.Add(new CommandBinding(saveThumbnailsCommand, (s, e) => SaveThumbnails_Click(null, null)));
-            // Define the Options command
-            var optionsCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(optionsCommand, new KeyGesture(Key.O, ModifierKeys.Control | ModifierKeys.Shift)));
-            CommandBindings.Add(new CommandBinding(optionsCommand, (s, e) => File_Options_Click(null, null)));
-
-
-            // Define the Properties command
-            var PropertiesCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(PropertiesCommand, new KeyGesture(Key.Enter, ModifierKeys.Alt)));
-            CommandBindings.Add(new CommandBinding(PropertiesCommand, (s, e) => Properties_Click(null, null)));
-
-            // Define the Open File Location command
-            var openFileLocationCommand = new RoutedCommand();
-            InputBindings.Add(new KeyBinding(openFileLocationCommand, new KeyGesture(Key.L, ModifierKeys.Control )));
-            CommandBindings.Add(new CommandBinding(openFileLocationCommand, (s, e) => OpenFileLocation_Click(null, null)));
-
-            
-
-            // --------------------------------- End of Keyboard Shortcuts -----------------------------------------
-
-            #endregion
 
 
         }
 
+        private void InitializeKeyboardShortcuts()
+        {
+            // View Menu Shortcuts
+            AddKeyBinding(Key.D0, ModifierKeys.Control, (s, e) => ViewMenuHandler.HideMenu_Click(null, null, this));
+            AddKeyBinding(Key.D1, ModifierKeys.Control, (s, e) => ViewMenuHandler.SeekBar_Click(null, null, this));
+            AddKeyBinding(Key.D2, ModifierKeys.Control, (s, e) => ViewMenuHandler.Controls_Click(null, null, this));
+            AddKeyBinding(Key.D3, ModifierKeys.Control, (s, e) => ViewMenuHandler.Information_Click(null, null, this));
+            AddKeyBinding(Key.D4, ModifierKeys.Control, (s, e) => ViewMenuHandler.Statistics_Click(null, null, this));
+            AddKeyBinding(Key.D5, ModifierKeys.Control, (s, e) => ViewMenuHandler.Status_Click(null, null, this));
+            AddKeyBinding(Key.S, ModifierKeys.Control, (s, e) => ViewMenuHandler.LoadSubtitle_Click(null, null, this));
+            AddKeyBinding(Key.D6, ModifierKeys.Control, (s, e) => ViewMenuHandler.Subresync_Click(null, null, this));
+            AddKeyBinding(Key.D7, ModifierKeys.Control, (s, e) => ViewMenuHandler.Playlist_Click(null, null, this));
+            AddKeyBinding(Key.D8, ModifierKeys.Control, (s, e) => ViewMenuHandler.Capture_Click(null, null, this));
+            AddKeyBinding(Key.F11, ModifierKeys.None, (s, e) => ViewMenuHandler.FullScreen_Click(null, null, this));
+
+
+            // File Menu Shortcuts
+            AddKeyBinding(Key.Q, ModifierKeys.Control, (s, e) => BtnOpen_Click(null, null));
+            AddKeyBinding(Key.O, ModifierKeys.Control, (s, e) => OpenFileUrl_Click(null, null));
+            AddKeyBinding(Key.C, ModifierKeys.Control, (s, e) => OpenDVD_Click(null, null));
+            AddKeyBinding(Key.I, ModifierKeys.Control, (s, e) => OpenDevice_Click(null, null));
+            AddKeyBinding(Key.D, ModifierKeys.Control, (s, e) => OpenDirectory_Click(null, null));
+            AddKeyBinding(Key.K, ModifierKeys.Control, (s, e) => OpenDisc_Click(null, null));
+            AddKeyBinding(Key.S, ModifierKeys.Alt, (s, e) => SaveCopy_Click(null, null));
+            AddKeyBinding(Key.I, ModifierKeys.Alt, (s, e) => SaveImage_Click(null, null));
+            AddKeyBinding(Key.T, ModifierKeys.Control, (s, e) => SaveThumbnails_Click(null, null));
+            AddKeyBinding(Key.O, ModifierKeys.Control | ModifierKeys.Shift, (s, e) => File_Options_Click(null, null));
+            AddKeyBinding(Key.Enter, ModifierKeys.Alt, (s, e) => Properties_Click(null, null));
+            AddKeyBinding(Key.L, ModifierKeys.Control, (s, e) => OpenFileLocation_Click(null, null));
+        }
+
+        private void AddKeyBinding(Key key, ModifierKeys mod, ExecutedRoutedEventHandler handler)
+        {
+            var cmd = new RoutedCommand();
+            InputBindings.Add(new KeyBinding(cmd, new KeyGesture(key, mod)));
+            CommandBindings.Add(new CommandBinding(cmd, handler));
+        }
 
 
         // ===== Cursor change on edges =====
@@ -525,6 +415,14 @@ namespace NMH_Media_Player
 
                 // Update visualizer and UI
                 UpdateVisualizer();
+
+                // Update embedded subtitle menu after media loads
+                // Update embedded subtitle menu after media loads
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    UpdateEmbeddedSubtitlesMenu();
+                }), DispatcherPriority.ApplicationIdle);
+
             }
             catch (Exception ex)
             {
@@ -817,7 +715,14 @@ namespace NMH_Media_Player
             => MenuEvents.MenuAbout_Click(sender, e);
 
         private void mediaPlayer_MediaOpened(object sender, RoutedEventArgs e)
-    => MediaPlayerEvents.MediaOpened(sender, e);
+        {
+            MediaPlayerEvents.MediaOpened(sender, e);
+
+            // Update embedded subtitle menu when media loads
+            UpdateEmbeddedSubtitlesMenu();
+
+        }
+   
 
 
         //----------------------------- Color Change Menu ----------------------------------------------
@@ -1093,6 +998,84 @@ namespace NMH_Media_Player
         {
             txtTitle.Text = title; // txtTitle is your TextBlock in the custom title bar
         }
+
+
+        // Add these methods to your MainWindow class
+
+        private void UpdateEmbeddedSubtitlesMenu()
+        {
+            try
+            {
+                // Find the subtitles menu
+                var subtitleMenu = FindName("SubtitleMenu") as MenuItem;
+                if (subtitleMenu == null) return;
+
+                // Clear previous embedded subtitle items
+                for (int i = subtitleMenu.Items.Count - 1; i >= 0; i--)
+                {
+                    if (subtitleMenu.Items[i] is MenuItem item && item.Tag?.ToString()?.StartsWith("embedded_") == true)
+                    {
+                        subtitleMenu.Items.RemoveAt(i);
+                    }
+                }
+
+                // Add embedded subtitle tracks if any
+                if (mediaController.EmbeddedSubtitleTracks.Any())
+                {
+                    // Add separator
+                    subtitleMenu.Items.Add(new Separator());
+
+                    // Add embedded subtitle header
+                    var embeddedHeader = new MenuItem
+                    {
+                        Header = "Embedded Subtitles",
+                        IsEnabled = false,
+                        Tag = "embedded_header"
+                    };
+                    subtitleMenu.Items.Add(embeddedHeader);
+
+                    // Add each embedded track
+                    foreach (var track in mediaController.EmbeddedSubtitleTracks)
+                    {
+                        var menuItem = new MenuItem
+                        {
+                            Header = $"{track.Language} - {track.Name}",
+                            Tag = $"embedded_{track.TrackIndex}",
+                            ToolTip = $"Codec: {track.Codec}"
+                        };
+                        menuItem.Click += EmbeddedSubtitleMenuItem_Click;
+                        subtitleMenu.Items.Add(menuItem);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error updating embedded subtitles menu: {ex.Message}");
+            }
+        }
+
+        private void EmbeddedSubtitleMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            var menuItem = sender as MenuItem;
+            if (menuItem?.Tag is string tag && tag.StartsWith("embedded_"))
+            {
+                if (int.TryParse(tag.Replace("embedded_", ""), out int trackIndex))
+                {
+                    // This uses your EXISTING subtitle system!
+                    mediaController.LoadEmbeddedSubtitleAsExternal(trackIndex);
+                }
+            }
+        }
+
+        private void DisableSubtitles_Click(object sender, RoutedEventArgs e)
+        {
+            // This uses your EXISTING subtitle clearing system!
+            mediaController.ClearSubtitles();
+            ViewMenuHandler.ShowToast(this, "Subtitles disabled");
+        }
+
+
+
 
     }
 
