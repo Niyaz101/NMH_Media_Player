@@ -328,35 +328,42 @@
                                         <DockPanel LastChildFill="True">
                                             <!-- Menu Header -->
                                             <ContentPresenter x:Name="HeaderHost"
-                                                      ContentSource="Header"
-                                                      Margin="6,2,6,2"
-                                                      RecognizesAccessKey="True"
-                                                      VerticalAlignment="Center"/>
+                                      ContentSource="Header"
+                                      Margin="6,2,6,2"
+                                      RecognizesAccessKey="True"
+                                      VerticalAlignment="Center"/>
 
                                             <!-- Key Gesture / Shortcut -->
                                             <TextBlock Text="{TemplateBinding InputGestureText}"
-                                               Foreground="LightGray"
-                                               Margin="6,0,6,0"
-                                               HorizontalAlignment="Right"
-                                               VerticalAlignment="Center"/>
+                                   Foreground="LightGray"
+                                   Margin="6,0,6,0"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center"/>
                                         </DockPanel>
                                     </Border>
 
                                     <!-- Submenu Popup -->
                                     <Popup x:Name="Popup"
-                                   Placement="Bottom"
-                                   IsOpen="{TemplateBinding IsSubmenuOpen}"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
-                                   PopupAnimation="Slide">
+                           Placement="Bottom"
+                           IsOpen="{TemplateBinding IsSubmenuOpen}"
+                           AllowsTransparency="True"
+                           Focusable="False"
+                           PopupAnimation="Slide">
                                         <Border Background="#2d2d2d"
-                                        CornerRadius="4"
-                                        BorderBrush="#444"
-                                        BorderThickness="1"
-                                        MinWidth="180">
-                                            <StackPanel>
-                                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
-                                            </StackPanel>
+                                CornerRadius="4"
+                                BorderBrush="#444"
+                                BorderThickness="1"
+                                MinWidth="250"
+                                MaxHeight="400">
+                                            <!-- Increased width for better readability -->
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          CanContentScroll="True"
+                                          Padding="0">
+                                                <StackPanel>
+                                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                                </StackPanel>
+                                            </ScrollViewer>
                                         </Border>
                                     </Popup>
                                 </Grid>
@@ -413,7 +420,7 @@
                 <MenuItem Header="Exit" InputGestureText="Alt+X" Click="Exit_Click"/>
 
                 <!-- Subtitles Menu -->
-                <MenuItem Header="Subtitles" x:Name="SubtitleMenu">
+                <MenuItem Header="Embedded Subtitles" x:Name="SubtitleMenu">
                     <MenuItem Header="None" Click="DisableSubtitles_Click"/>
                     <MenuItem Header="Load External..." Click="View_LoadSubtitle_Click"/>
                     <!-- Embedded subtitles will be added dynamically here -->

@@ -53,17 +53,21 @@ namespace NMH_Media_Player.Modules
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                          "NMH_Media_Player", "resume.txt");
 
-        // ========================= Subtitles =========================
+       
 
-        // ========================= Embedded Subtitles =========================
+       
         // ========================= Embedded Subtitles =========================
         public List<EmbeddedSubtitleTrack> EmbeddedSubtitleTracks { get; private set; } = new();
         public int CurrentEmbeddedSubtitleIndex { get; set; } = -1;  // Changed to public set
         public bool UseEmbeddedSubtitles { get; set; } = false;      // Changed to public set
         public EmbeddedSubtitleTrack? ActiveEmbeddedSubtitle { get; private set; }
 
+        //========================== Temp Files Management for embdeded Subtitles ==================
+        private readonly List<string> _tempSubtitleFiles = new List<string>();
+        private static readonly string _tempFilePrefix = "embedded_";
 
 
+        // ========================= External Subtitles =========================
         public string? CurrentSubtitleFile { get; private set; } = null;
 
         // ✅ Use the MainWindow's timer instead of creating a new one
@@ -192,6 +196,9 @@ namespace NMH_Media_Player.Modules
 
                 mediaPlayer.Position = TimeSpan.Zero;
                 subtitleTextBlock.Text = string.Empty;
+
+                // 🧹 Clean up temp files when stopping
+                CleanupCurrentTempFile();
 
                 mainWindow.progressSlider.Value = 0;
                 mainWindow.lblDuration.Content = "00:00:00 / 00:00:00";
@@ -327,7 +334,6 @@ namespace NMH_Media_Player.Modules
         {
             try
             {
-
                 string file = GetCurrentFile();
                 if (string.IsNullOrEmpty(file)) return;
 
@@ -356,13 +362,6 @@ namespace NMH_Media_Player.Modules
                     return;
                 }
 
-
-
-                // Detect embedded subtitle tracks
-              
-
-
-
                 // Clear previous subtitles
                 ClearSubtitles();
 
@@ -375,13 +374,7 @@ namespace NMH_Media_Player.Modules
 
                 mediaPlayer.Source = new Uri(file);
 
-
-                // ------------------- Load Embedded Subtitles -------------------
-                // ✅ DETECT EMBEDDED SUBTITLES (Add this line)
-                DetectEmbeddedSubtitles(file);
-
-               
-
+                // ✅ START PLAYBACK IMMEDIATELY (moved up)
                 UpdateWindowTitle();
 
                 // Apply playback speed
@@ -414,21 +407,68 @@ namespace NMH_Media_Player.Modules
                 // Save recent file
                 RecentFileHelper.AddRecentFile(file);
 
-                // ✅ AUTO-LOAD FIRST EMBEDDED SUBTITLE IF AVAILABLE (Optional)
-                if (EmbeddedSubtitleTracks.Any())
-                {
-                    var defaultTrack = EmbeddedSubtitleTracks.FirstOrDefault(t => t.IsDefault) ?? EmbeddedSubtitleTracks.First();
-                    LoadEmbeddedSubtitleAsExternal(defaultTrack.TrackIndex);
-                }
-                else
-                {
-                    // Fall back to external subtitle file
-                    string subtitlePath = Path.ChangeExtension(file, ".srt");
-                    if (File.Exists(subtitlePath))
-                        LoadSubtitles(subtitlePath);
-                }
+                // ------------------- Load Embedded Subtitles ASYNC (non-blocking) -------------------
+                Debug.WriteLine("🚀 Starting async subtitle detection...");
 
-              
+                // Run subtitle detection in background without blocking playback
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Small delay to let video start playing first
+                        await Task.Delay(500);
+
+                        if (token.IsCancellationRequested) return;
+
+                        // Detect embedded subtitles
+                        var tracks = EmbeddedSubtitleDetector.GetEmbeddedSubtitles(file);
+
+                        if (token.IsCancellationRequested) return;
+
+                        if (tracks != null && tracks.Count > 0)
+                        {
+                            // Update on UI thread
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                if (token.IsCancellationRequested) return;
+
+                                EmbeddedSubtitleTracks.Clear();
+                                EmbeddedSubtitleTracks.AddRange(tracks);
+
+                                // Auto-load the preferred track
+                                var preferredTrack = tracks.FirstOrDefault(t => t.Language.Equals("English", StringComparison.OrdinalIgnoreCase))
+                                                  ?? tracks.FirstOrDefault(t => t.IsDefault)
+                                                  ?? tracks.First();
+
+                                LoadEmbeddedSubtitleAsExternal(preferredTrack.TrackIndex);
+
+                                // Update menu
+                                mainWindow?.UpdateEmbeddedSubtitlesMenu();
+
+                                Debug.WriteLine($"✅ Auto-loaded embedded subtitle: {preferredTrack.Language}");
+                            });
+                        }
+                        else
+                        {
+                            // No embedded subtitles found, try external subtitle
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                if (token.IsCancellationRequested) return;
+
+                                string subtitlePath = Path.ChangeExtension(file, ".srt");
+                                if (File.Exists(subtitlePath))
+                                {
+                                    LoadSubtitles(subtitlePath);
+                                    Debug.WriteLine($"✅ Loaded external subtitle: {subtitlePath}");
+                                }
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"💥 Background subtitle detection failed: {ex.Message}");
+                    }
+                }, token);
             }
             catch (Exception ex)
             {
@@ -436,7 +476,6 @@ namespace NMH_Media_Player.Modules
                     ViewMenuHandler.ShowToast(mainWindow, $"Failed to play video: {ex.Message}");
             }
         }
-
 
 
 
@@ -570,13 +609,16 @@ namespace NMH_Media_Player.Modules
             }
         }
 
+        
         public void ClearSubtitles()
         {
+            // 🧹 Clean up temp file when clearing subtitles
+            CleanupCurrentTempFile();
+
             SubtitleEntries.Clear();
             CurrentSubtitleFile = null;
             subtitleTextBlock.Text = string.Empty;
         }
-
 
         public void UpdateSubtitle(TimeSpan currentTime)
         {
@@ -780,7 +822,145 @@ namespace NMH_Media_Player.Modules
         // ========================= Embedded Subtitles =========================
 
 
-        // Add this method to extract embedded subtitle as external file
+        // Auto-detect and load embedded subtitles
+        // Auto-detect and load embedded subtitles
+        // Auto-detect and load embedded subtitles
+        // Make this method async
+        public async Task AutoLoadEmbeddedSubtitlesAsync(string videoFilePath)
+        {
+            try
+            {
+                Debug.WriteLine($"=== AUTO-LOAD EMBEDDED SUBTITLES STARTED ===");
+
+                // Clean up any previous temp file
+                CleanupCurrentTempFile();
+
+                EmbeddedSubtitleTracks.Clear();
+
+                if (!File.Exists(videoFilePath))
+                {
+                    Debug.WriteLine("❌ Video file doesn't exist");
+                    return;
+                }
+
+                // 1. FIRST: Look in video if there is embedded subtitle (async)
+                Debug.WriteLine("🔍 Detecting embedded subtitles asynchronously...");
+
+                // Run detection on background thread to avoid blocking UI
+                var tracks = await Task.Run(() => EmbeddedSubtitleDetector.GetEmbeddedSubtitles(videoFilePath));
+
+                if (tracks == null || tracks.Count == 0)
+                {
+                    Debug.WriteLine("❌ No embedded subtitles found");
+                    return;
+                }
+
+                Debug.WriteLine($"✅ Found {tracks.Count} embedded subtitle tracks");
+                EmbeddedSubtitleTracks.AddRange(tracks);
+
+                // 2. IF YES: Extract it and save in temp (also async)
+                var preferredTrack = tracks.FirstOrDefault(t => t.Language.Equals("English", StringComparison.OrdinalIgnoreCase))
+                                  ?? tracks.FirstOrDefault(t => t.IsDefault)
+                                  ?? tracks.First();
+
+                Debug.WriteLine($"🎯 Selected track: {preferredTrack.Name} (Language: {preferredTrack.Language}, Default: {preferredTrack.IsDefault})");
+
+                // Run extraction on background thread
+                string tempSubtitlePath = await Task.Run(() => ExtractEmbeddedSubtitleToFile(videoFilePath, preferredTrack.TrackIndex));
+
+                if (!string.IsNullOrEmpty(tempSubtitlePath) && File.Exists(tempSubtitlePath))
+                {
+                    Debug.WriteLine($"✅ Extracted to: {tempSubtitlePath}");
+
+                    // 3. THEN: From temp detect it as external subtitle and auto load
+                    // This part needs to run on UI thread
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        Debug.WriteLine("📥 Loading extracted subtitle...");
+                        LoadSubtitles(tempSubtitlePath);
+                        CurrentSubtitleFile = tempSubtitlePath;
+
+                        ViewMenuHandler.ShowToast(mainWindow, $"Auto-loaded: {preferredTrack.Language} ({preferredTrack.Name})");
+                        Debug.WriteLine($"✅ Embedded subtitle loaded successfully");
+                    });
+                }
+                else
+                {
+                    Debug.WriteLine("❌ Failed to extract embedded subtitle");
+                    // Don't show toast here to avoid UI blocking
+                }
+
+                Debug.WriteLine($"=== AUTO-LOAD EMBEDDED SUBTITLES COMPLETED ===");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"💥 Auto-load embedded subtitles failed: {ex.Message}");
+            }
+        }
+        private string ExtractEmbeddedSubtitleToFile(string mediaFilePath, int trackIndex)
+        {
+            try
+            {
+                Debug.WriteLine($"🔄 Extracting subtitle track {trackIndex} from: {mediaFilePath}");
+
+                string tempPath = Path.GetTempFileName();
+                tempPath = Path.ChangeExtension(tempPath, ".srt");
+                Debug.WriteLine($"📝 Temp file: {tempPath}");
+
+                // Use FFmpeg to extract the subtitle to a temporary file
+                string ffmpegArgs = $"-i \"{mediaFilePath}\" -map 0:s:{trackIndex} \"{tempPath}\" -y";
+                Debug.WriteLine($"🔧 FFmpeg command: ffmpeg {ffmpegArgs}");
+
+                var processStartInfo = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = ffmpegArgs,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true
+                };
+
+                using var process = Process.Start(processStartInfo);
+                if (process != null)
+                {
+                    string errorOutput = process.StandardError.ReadToEnd();
+                    process.WaitForExit(10000); // 10 second timeout
+
+                    Debug.WriteLine($"FFmpeg exit code: {process.ExitCode}");
+
+                    if (process.ExitCode == 0 && File.Exists(tempPath))
+                    {
+                        Debug.WriteLine($"✅ Extraction successful, file size: {new FileInfo(tempPath).Length} bytes");
+
+                        // Track this temp file for cleanup
+                        _tempSubtitleFiles.Add(tempPath);
+                        Debug.WriteLine($"📁 Tracking temp file: {tempPath} (Total: {_tempSubtitleFiles.Count})");
+
+                        return tempPath;
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"❌ Extraction failed or file doesn't exist");
+                        // Clean up failed extraction
+                        TryDeleteFile(tempPath);
+                        return null;
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"❌ Failed to start FFmpeg process");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"💥 Extraction failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        // Manual method for menu selection
         public void LoadEmbeddedSubtitleAsExternal(int trackIndex)
         {
             try
@@ -791,23 +971,16 @@ namespace NMH_Media_Player.Modules
                 string videoFile = CurrentFile;
                 if (string.IsNullOrEmpty(videoFile)) return;
 
-                // Extract embedded subtitle to temporary SRT file
+                // Clean up previous temp file before loading new one
+                CleanupCurrentTempFile();
+
                 string tempSubtitlePath = ExtractEmbeddedSubtitleToFile(videoFile, trackIndex);
 
                 if (!string.IsNullOrEmpty(tempSubtitlePath) && File.Exists(tempSubtitlePath))
                 {
-                    // Use your EXISTING external subtitle loading system
                     LoadSubtitles(tempSubtitlePath);
-                    CurrentSubtitleFile = tempSubtitlePath; // Mark as temporary embedded file
-
+                    CurrentSubtitleFile = tempSubtitlePath;
                     ViewMenuHandler.ShowToast(mainWindow, $"Loaded embedded subtitle: {track.Name}");
-
-                    // Optional: Auto-delete temp file when done (or keep for session)
-                    // You might want to track these temp files and clean them up on app exit
-                }
-                else
-                {
-                    ViewMenuHandler.ShowToast(mainWindow, "Failed to extract embedded subtitle");
                 }
             }
             catch (Exception ex)
@@ -816,61 +989,154 @@ namespace NMH_Media_Player.Modules
             }
         }
 
-        private string ExtractEmbeddedSubtitleToFile(string mediaFilePath, int trackIndex)
+        private bool IsFFmpegAvailable()
         {
             try
             {
-                string tempPath = Path.GetTempFileName();
-                tempPath = Path.ChangeExtension(tempPath, ".srt");
-
-                // Use FFmpeg to extract the subtitle to a temporary file
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = "ffmpeg",
-                    Arguments = $"-i \"{mediaFilePath}\" -map 0:s:{trackIndex} \"{tempPath}\" -y",
+                    Arguments = "-version",
                     UseShellExecute = false,
-                    CreateNoWindow = true
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true
                 };
 
                 using var process = Process.Start(processStartInfo);
                 if (process != null)
                 {
-                    process.WaitForExit(10000); // 10 second timeout
-                    return process.ExitCode == 0 ? tempPath : null;
+                    process.WaitForExit(3000);
+                    bool available = process.ExitCode == 0;
+                    Debug.WriteLine($"FFmpeg available: {available}");
+                    return available;
                 }
+                return false;
             }
-            catch (Exception ex)
+            catch
             {
-                Debug.WriteLine($"Extraction failed: {ex.Message}");
+                Debug.WriteLine("❌ FFmpeg not found in PATH");
+                return false;
             }
-
-            return null;
         }
 
-        // Simplified method to detect embedded subtitles
-        public void DetectEmbeddedSubtitles(string videoFilePath)
+        // Clean up all temporary subtitle files
+        public void CleanupTempFiles()
         {
             try
             {
-                EmbeddedSubtitleTracks.Clear();
+                Debug.WriteLine($"🧹 Cleaning up {_tempSubtitleFiles.Count} temporary subtitle files...");
 
-                if (!File.Exists(videoFilePath)) return;
-
-                // Use your existing detector
-                var tracks = EmbeddedSubtitleDetector.GetEmbeddedSubtitles(videoFilePath);
-                if (tracks != null && tracks.Count > 0)
+                int deletedCount = 0;
+                foreach (string tempFile in _tempSubtitleFiles.ToList()) // Use ToList to avoid modification during iteration
                 {
-                    EmbeddedSubtitleTracks.AddRange(tracks);
+                    if (TryDeleteFile(tempFile))
+                    {
+                        _tempSubtitleFiles.Remove(tempFile);
+                        deletedCount++;
+                        Debug.WriteLine($"✅ Deleted: {tempFile}");
+                    }
                 }
+
+                Debug.WriteLine($"🧹 Cleanup completed: {deletedCount} files deleted, {_tempSubtitleFiles.Count} remaining in list");
+
+                // Also clean up any orphaned temp files from previous sessions
+                CleanupOrphanedTempFiles();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error detecting embedded subtitles: {ex.Message}");
+                Debug.WriteLine($"💥 Temp file cleanup failed: {ex.Message}");
+            }
+        }
+
+        // Clean up orphaned temp files from previous sessions
+        private void CleanupOrphanedTempFiles()
+        {
+            try
+            {
+                string tempDir = Path.GetTempPath();
+                var orphanedFiles = Directory.GetFiles(tempDir, $"{_tempFilePrefix}*.srt")
+                                           .Concat(Directory.GetFiles(tempDir, "*.srt"))
+                                           .Where(f => !_tempSubtitleFiles.Contains(f))
+                                           .ToList();
+
+                Debug.WriteLine($"🔍 Found {orphanedFiles.Count} orphaned subtitle files to clean up");
+
+                int deletedCount = 0;
+                foreach (string orphanedFile in orphanedFiles)
+                {
+                    // Only delete files that are likely from our app (recent files)
+                    var fileInfo = new FileInfo(orphanedFile);
+                    if (fileInfo.CreationTime > DateTime.Now.AddHours(-24)) // Delete files from last 24 hours
+                    {
+                        if (TryDeleteFile(orphanedFile))
+                        {
+                            deletedCount++;
+                            Debug.WriteLine($"✅ Deleted orphaned: {Path.GetFileName(orphanedFile)}");
+                        }
+                    }
+                }
+
+                Debug.WriteLine($"🧹 Orphaned cleanup: {deletedCount} files deleted");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"💥 Orphaned file cleanup failed: {ex.Message}");
+            }
+        }
+
+        // Safe file deletion with error handling
+        private bool TryDeleteFile(string filePath)
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"⚠️ Could not delete file {filePath}: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Clean up current temp file when switching subtitles
+        public void CleanupCurrentTempFile()
+        {
+            if (!string.IsNullOrEmpty(CurrentSubtitleFile) &&
+                CurrentSubtitleFile.Contains(Path.GetTempPath()) &&
+                File.Exists(CurrentSubtitleFile))
+            {
+                Debug.WriteLine($"🔄 Cleaning up current temp subtitle: {CurrentSubtitleFile}");
+                TryDeleteFile(CurrentSubtitleFile);
+
+                // Remove from tracking list
+                _tempSubtitleFiles.Remove(CurrentSubtitleFile);
+                CurrentSubtitleFile = null;
             }
         }
 
 
-
+        // Add this method to debug what's being detected
+        public void DebugDetectedSubtitles()
+        {
+            try
+            {
+                Debug.WriteLine("=== DEBUG DETECTED SUBTITLES ===");
+                foreach (var track in EmbeddedSubtitleTracks)
+                {
+                    Debug.WriteLine($"Track {track.TrackIndex}: Language='{track.Language}', Name='{track.Name}', Codec='{track.Codec}', Default={track.IsDefault}");
+                }
+                Debug.WriteLine("=== END DEBUG ===");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Debug failed: {ex.Message}");
+            }
+        }
 
 
     }

@@ -10,6 +10,7 @@ using NMH_Media_Player.Modules.Handlers;
 using NMH_Media_Player.Modules.Helpers;
 using NMH_Media_Player.Properties;
 using NMH_Media_Player.SettingsWindow;
+using NMH_Media_Player.Subtitles;
 using NMH_Media_Player.Thumbnails;
 using NMH_Media_Player.VideoScaling;
 using System;
@@ -498,6 +499,11 @@ namespace NMH_Media_Player
         {
             mediaController.SaveLastSession();
 
+
+            // 🧹 CLEAN UP TEMP FILES
+            Debug.WriteLine("🧹 Application closing - cleaning up temp files...");
+            mediaController.CleanupTempFiles();
+
             // Save window size/position
             if (Settings.Default.RememberWindow)
             {
@@ -718,11 +724,20 @@ namespace NMH_Media_Player
         {
             MediaPlayerEvents.MediaOpened(sender, e);
 
+            // Auto-size window to video resolution (with delay to ensure video is loaded)
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                // Small delay to ensure NaturalVideoWidth/Height are available
+                Task.Delay(100).ContinueWith(_ =>
+                {
+                    Dispatcher.Invoke(() => AutoSizeWindowToVideo());
+                });
+            }), DispatcherPriority.Background);
+
             // Update embedded subtitle menu when media loads
             UpdateEmbeddedSubtitlesMenu();
-
         }
-   
+
 
 
         //----------------------------- Color Change Menu ----------------------------------------------
@@ -931,6 +946,11 @@ namespace NMH_Media_Player
             // Always on Top
             this.Topmost = Settings.Default.AlwaysOnTop;
 
+            // Auto-size to video (you'll need to add this setting)
+            // if (Settings.Default.AutoResizeToVideo) 
+            // {
+            //     // Enable auto-sizing
+            // }
             // Remember Window Size & Position
             if (Settings.Default.RememberWindow)
             {
@@ -1002,7 +1022,7 @@ namespace NMH_Media_Player
 
         // Add these methods to your MainWindow class
 
-        private void UpdateEmbeddedSubtitlesMenu()
+        public void UpdateEmbeddedSubtitlesMenu()
         {
             try
             {
@@ -1011,13 +1031,22 @@ namespace NMH_Media_Player
                 if (subtitleMenu == null) return;
 
                 // Clear previous embedded subtitle items
-                for (int i = subtitleMenu.Items.Count - 1; i >= 0; i--)
-                {
-                    if (subtitleMenu.Items[i] is MenuItem item && item.Tag?.ToString()?.StartsWith("embedded_") == true)
-                    {
-                        subtitleMenu.Items.RemoveAt(i);
-                    }
-                }
+                // Clear previous embedded subtitle items
+var itemsToRemove = new List<MenuItem>();
+
+foreach (var item in subtitleMenu.Items.OfType<MenuItem>())
+{
+    string tag = item.Tag?.ToString() ?? "";
+    if (tag.StartsWith("embedded_") || tag.StartsWith("language_") || tag == "other_languages")
+    {
+        itemsToRemove.Add(item);
+    }
+}
+
+foreach (var item in itemsToRemove)
+{
+    subtitleMenu.Items.Remove(item);
+}
 
                 // Add embedded subtitle tracks if any
                 if (mediaController.EmbeddedSubtitleTracks.Any())
@@ -1028,30 +1057,241 @@ namespace NMH_Media_Player
                     // Add embedded subtitle header
                     var embeddedHeader = new MenuItem
                     {
-                        Header = "Embedded Subtitles",
+                        Header = "📝 Embedded Subtitles",
                         IsEnabled = false,
-                        Tag = "embedded_header"
+                        Tag = "embedded_header",
+                        FontWeight = FontWeights.Bold
                     };
                     subtitleMenu.Items.Add(embeddedHeader);
 
-                    // Add each embedded track
-                    foreach (var track in mediaController.EmbeddedSubtitleTracks)
+                    // Group tracks by language for better organization
+                    var languageGroups = mediaController.EmbeddedSubtitleTracks
+                        .GroupBy(t => t.Language)
+                        .OrderBy(g => g.Key)
+                        .ToList();
+
+                    // Define popular languages (show these first)
+                    var popularLanguages = new[] {
+                "English", "Spanish", "French", "German", "Italian",
+                "Portuguese", "Russian", "Chinese", "Japanese", "Korean",
+                "Arabic", "Hindi", "Turkish", "Polish", "Dutch"
+            };
+
+                    var popularTracks = languageGroups.Where(g => popularLanguages.Contains(g.Key));
+                    var otherTracks = languageGroups.Where(g => !popularLanguages.Contains(g.Key));
+
+                    // Add popular languages directly
+                    foreach (var languageGroup in popularTracks.OrderBy(g => Array.IndexOf(popularLanguages, g.Key)))
                     {
-                        var menuItem = new MenuItem
+                        if (languageGroup.Count() == 1)
                         {
-                            Header = $"{track.Language} - {track.Name}",
-                            Tag = $"embedded_{track.TrackIndex}",
-                            ToolTip = $"Codec: {track.Codec}"
-                        };
-                        menuItem.Click += EmbeddedSubtitleMenuItem_Click;
-                        subtitleMenu.Items.Add(menuItem);
+                            // Single track for this language - add directly
+                            var track = languageGroup.First();
+                            AddTrackToMenu(subtitleMenu, track);
+                        }
+                        else
+                        {
+                            // Multiple tracks - create language submenu
+                            var languageMenu = new MenuItem
+                            {
+                                Header = $"{GetLanguageEmoji(languageGroup.Key)} {languageGroup.Key} ({languageGroup.Count()})",
+                                Tag = $"language_{languageGroup.Key}",
+                                ToolTip = $"{languageGroup.Count()} {languageGroup.Key} subtitle tracks"
+                            };
+
+                            // Sort tracks: default first, then by name
+                            var sortedTracks = languageGroup
+                                .OrderByDescending(t => t.IsDefault)
+                                .ThenBy(t => t.Name)
+                                .ToList();
+
+                            foreach (var track in sortedTracks)
+                            {
+                                AddTrackToSubmenu(languageMenu, track);
+                            }
+
+                            subtitleMenu.Items.Add(languageMenu);
+                        }
                     }
+
+                    // Add "Other Languages" submenu if there are other languages
+                    if (otherTracks.Any())
+                    {
+                        var otherMenu = new MenuItem
+                        {
+                            Header = "🌍 Other Languages",
+                            Tag = "other_languages",
+                            ToolTip = $"{otherTracks.Sum(g => g.Count())} tracks in {otherTracks.Count()} languages"
+                        };
+
+                        foreach (var languageGroup in otherTracks.OrderBy(g => g.Key))
+                        {
+                            if (languageGroup.Count() == 1)
+                            {
+                                // Single track - add directly to "Other Languages"
+                                var track = languageGroup.First();
+                                AddTrackToSubmenu(otherMenu, track);
+                            }
+                            else
+                            {
+                                // Multiple tracks - create submenu for this language
+                                var subLanguageMenu = new MenuItem
+                                {
+                                    Header = $"{GetLanguageEmoji(languageGroup.Key)} {languageGroup.Key} ({languageGroup.Count()})",
+                                    ToolTip = $"{languageGroup.Count()} {languageGroup.Key} subtitle tracks"
+                                };
+
+                                var sortedTracks = languageGroup
+                                    .OrderByDescending(t => t.IsDefault)
+                                    .ThenBy(t => t.Name)
+                                    .ToList();
+
+                                foreach (var track in sortedTracks)
+                                {
+                                    AddTrackToSubmenu(subLanguageMenu, track);
+                                }
+
+                                otherMenu.Items.Add(subLanguageMenu);
+                            }
+                        }
+
+                        subtitleMenu.Items.Add(otherMenu);
+                    }
+
+                    // Add "No Subtitles" option at the end
+                    subtitleMenu.Items.Add(new Separator());
+                    var noSubsMenuItem = new MenuItem
+                    {
+                        Header = "🚫 No Subtitles",
+                        Tag = "no_subtitles"
+                    };
+                    noSubsMenuItem.Click += DisableSubtitles_Click;
+                    subtitleMenu.Items.Add(noSubsMenuItem);
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error updating embedded subtitles menu: {ex.Message}");
             }
+        }
+
+        private void AddTrackToMenu(MenuItem parentMenu, EmbeddedSubtitleTrack track)
+        {
+            string displayName = CreateDisplayName(track);
+
+            var menuItem = new MenuItem
+            {
+                Header = displayName,
+                Tag = $"embedded_{track.TrackIndex}",
+                ToolTip = CreateTooltip(track),
+                FontWeight = track.IsDefault ? FontWeights.Bold : FontWeights.Normal
+            };
+            menuItem.Click += EmbeddedSubtitleMenuItem_Click;
+            parentMenu.Items.Add(menuItem);
+        }
+
+        private void AddTrackToSubmenu(MenuItem parentMenu, EmbeddedSubtitleTrack track)
+        {
+            string displayName = CreateDisplayName(track);
+
+            var menuItem = new MenuItem
+            {
+                Header = displayName,
+                Tag = $"embedded_{track.TrackIndex}",
+                ToolTip = CreateTooltip(track),
+                FontWeight = track.IsDefault ? FontWeights.Bold : FontWeights.Normal
+            };
+            menuItem.Click += EmbeddedSubtitleMenuItem_Click;
+            parentMenu.Items.Add(menuItem);
+        }
+
+        private string CreateDisplayName(EmbeddedSubtitleTrack track)
+        {
+            string displayName;
+
+            // Clean up the track name
+            string cleanName = track.Name
+                .Replace(track.Language, "") // Remove language if redundant
+                .Replace("Subtitle", "Track") // More user-friendly
+                .Replace("subrip", "") // Remove codec info
+                .Replace("()", "") // Clean empty parentheses
+                .Replace("[]", "") // Clean empty brackets
+                .Trim();
+
+            // Remove leading/trailing punctuation
+            if (cleanName.StartsWith("-") || cleanName.StartsWith(":") || cleanName.StartsWith("."))
+                cleanName = cleanName.Substring(1).Trim();
+            if (cleanName.EndsWith("-") || cleanName.EndsWith(":") || cleanName.EndsWith("."))
+                cleanName = cleanName.Substring(0, cleanName.Length - 1).Trim();
+
+            // Create display name
+            if (!string.IsNullOrEmpty(cleanName) && cleanName != track.TrackIndex.ToString())
+            {
+                displayName = $"{GetTrackEmoji(track)} {cleanName}";
+            }
+            else
+            {
+                displayName = $"{GetTrackEmoji(track)} Track {track.TrackIndex + 1}";
+            }
+
+            // Add default indicator
+            if (track.IsDefault)
+                displayName += " ★";
+
+            return displayName;
+        }
+
+        private string CreateTooltip(EmbeddedSubtitleTrack track)
+        {
+            var tooltip = new System.Text.StringBuilder();
+            tooltip.Append($"Language: {track.Language}");
+            tooltip.Append($"{Environment.NewLine}Codec: {track.Codec}");
+
+            if (!string.IsNullOrEmpty(track.Name) && track.Name != $"Subtitle {track.TrackIndex}")
+                tooltip.Append($"{Environment.NewLine}Description: {track.Name}");
+
+            if (track.IsDefault)
+                tooltip.Append($"{Environment.NewLine}Default track");
+
+            return tooltip.ToString();
+        }
+
+        private string GetLanguageEmoji(string language)
+        {
+            return language.ToLower() switch
+            {
+                "english" => "🇺🇸",
+                "spanish" => "🇪🇸",
+                "french" => "🇫🇷",
+                "german" => "🇩🇪",
+                "italian" => "🇮🇹",
+                "portuguese" => "🇵🇹",
+                "russian" => "🇷🇺",
+                "chinese" => "🇨🇳",
+                "japanese" => "🇯🇵",
+                "korean" => "🇰🇷",
+                "arabic" => "🇸🇦",
+                "hindi" => "🇮🇳",
+                "turkish" => "🇹🇷",
+                "polish" => "🇵🇱",
+                "dutch" => "🇳🇱",
+                _ => "🌐"
+            };
+        }
+
+        private string GetTrackEmoji(EmbeddedSubtitleTrack track)
+        {
+            if (track.Name.Contains("SDH", StringComparison.OrdinalIgnoreCase) ||
+                track.Name.Contains("hearing", StringComparison.OrdinalIgnoreCase))
+                return "👂";
+
+            if (track.Name.Contains("Forced", StringComparison.OrdinalIgnoreCase))
+                return "🔤";
+
+            if (track.Name.Contains("Commentary", StringComparison.OrdinalIgnoreCase))
+                return "💬";
+
+            return "📄";
         }
 
         private void EmbeddedSubtitleMenuItem_Click(object sender, RoutedEventArgs e)
@@ -1076,7 +1316,120 @@ namespace NMH_Media_Player
 
 
 
+        //======================================== Auto Size Window to Video Size ==========================================
 
+        private (int width, int height) GetVideoResolution()
+        {
+            try
+            {
+                if (mediaPlayer.NaturalVideoWidth > 0 && mediaPlayer.NaturalVideoHeight > 0)
+                {
+                    return (mediaPlayer.NaturalVideoWidth, mediaPlayer.NaturalVideoHeight);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error getting video resolution: {ex.Message}");
+            }
+            return (0, 0);
+        }
+
+
+
+        private void AutoSizeWindowToVideo()
+        {
+            try
+            {
+                // Don't resize if in fullscreen, maximized, or if settings prevent it
+                if (IsFullScreen || this.WindowState == WindowState.Maximized)
+                    return;
+
+                var (videoWidth, videoHeight) = GetVideoResolution();
+
+                if (videoWidth == 0 || videoHeight == 0)
+                    return;
+
+                // Get screen information
+                var screen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+                var screenWidth = screen.WorkingArea.Width;
+                var screenHeight = screen.WorkingArea.Height;
+
+                // UI element sizes (adjust these based on your actual UI)
+                int titleBarHeight = 40;   // Your custom title bar
+                int controlPanelHeight = 80; // Bottom controls
+                int sidePadding = 20;      // Side margins
+
+                int targetWindowWidth, targetWindowHeight;
+
+                // Smart sizing based on resolution categories
+                if (videoWidth >= 3840) // 4K - Scale down
+                {
+                    double scale = 0.6; // Show 4K at 60% size
+                    targetWindowWidth = (int)(videoWidth * scale) + (sidePadding * 2);
+                    targetWindowHeight = (int)(videoHeight * scale) + titleBarHeight + controlPanelHeight;
+                }
+                else if (videoWidth >= 2560) // 1440p - Scale slightly
+                {
+                    double scale = 0.8; // Show 1440p at 80% size
+                    targetWindowWidth = (int)(videoWidth * scale) + (sidePadding * 2);
+                    targetWindowHeight = (int)(videoHeight * scale) + titleBarHeight + controlPanelHeight;
+                }
+                else if (videoWidth >= 1920) // 1080p - Show at native size
+                {
+                    targetWindowWidth = videoWidth + (sidePadding * 2);
+                    targetWindowHeight = videoHeight + titleBarHeight + controlPanelHeight;
+                }
+                else if (videoWidth >= 1280) // 720p - Show at native size
+                {
+                    targetWindowWidth = videoWidth + (sidePadding * 2);
+                    targetWindowHeight = videoHeight + titleBarHeight + controlPanelHeight;
+                }
+                else // Lower resolutions (360p, 480p, etc.) - Don't make too small
+                {
+                    targetWindowWidth = Math.Max(videoWidth + (sidePadding * 2), 600);
+                    targetWindowHeight = Math.Max(videoHeight + titleBarHeight + controlPanelHeight, 450);
+                }
+
+                // Respect absolute minimums from XAML
+                targetWindowWidth = Math.Max(targetWindowWidth, 400);
+                targetWindowHeight = Math.Max(targetWindowHeight, 300);
+
+                // Ensure window fits on screen
+                int maxWidth = (int)(screenWidth * 0.95);
+                int maxHeight = (int)(screenHeight * 0.95);
+
+                if (targetWindowWidth > maxWidth || targetWindowHeight > maxHeight)
+                {
+                    double widthRatio = (double)maxWidth / targetWindowWidth;
+                    double heightRatio = (double)maxHeight / targetWindowHeight;
+                    double scale = Math.Min(widthRatio, heightRatio);
+
+                    targetWindowWidth = (int)(targetWindowWidth * scale);
+                    targetWindowHeight = (int)(targetWindowHeight * scale);
+
+                    // Re-apply minimums after scaling
+                    targetWindowWidth = Math.Max(targetWindowWidth, 400);
+                    targetWindowHeight = Math.Max(targetWindowHeight, 300);
+                }
+
+                // Apply with dispatcher to avoid threading issues
+                this.Dispatcher.BeginInvoke(() =>
+                {
+                    this.Width = targetWindowWidth;
+                    this.Height = targetWindowHeight;
+
+                    // Keep window centered
+                    this.Left = Math.Max(0, (screenWidth - targetWindowWidth) / 2);
+                    this.Top = Math.Max(0, (screenHeight - targetWindowHeight) / 2);
+                });
+
+                Debug.WriteLine($"Video: {videoWidth}x{videoHeight} → Window: {targetWindowWidth}x{targetWindowHeight}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in AutoSizeWindowToVideo: {ex.Message}");
+            }
+        }
     }
 
 
